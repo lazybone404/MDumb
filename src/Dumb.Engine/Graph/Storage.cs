@@ -1,19 +1,16 @@
-using System.Collections;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 
 namespace Dumb.Engine.Graph;
 
-public unsafe sealed class Storage<T> : IDisposable
+public sealed unsafe class Storage<T> : IDisposable
     where T : unmanaged
 {
-    private static int s_storageUid;
-
     private T* _data;
     private ushort* _meta;
+    private ushort* _epoch;
     private nuint _capacity;
     private readonly NativeBuffer<PointerData> _freeList;
-    private readonly Pending _pending;
     private bool _disposed;
 
     public Storage()
@@ -26,112 +23,86 @@ public unsafe sealed class Storage<T> : IDisposable
         if (capacity != 0)
         {
             _data = (T*)NativeMemory.Alloc(capacity, (nuint)sizeof(T));
-            _meta = (ushort*)NativeMemory.Alloc(capacity, (nuint)sizeof(ushort));
-            NativeMemory.Clear(_meta, capacity * (nuint)sizeof(ushort));
+            _meta = (ushort*)NativeMemory.Alloc(capacity, sizeof(ushort));
+            _epoch = (ushort*)NativeMemory.Alloc(capacity, sizeof(ushort));
+            NativeMemory.Clear(_meta, capacity * sizeof(ushort));
+            NativeMemory.Clear(_epoch, capacity * sizeof(ushort));
             _capacity = capacity;
         }
 
         _freeList = new NativeBuffer<PointerData>();
-        _pending = new Pending();
-        Id = unchecked((byte)Interlocked.Increment(ref s_storageUid));
+        Id = StorageIdAllocator.Next();
     }
 
     public nuint Length { get; private set; }
 
-    public byte Id { get; }
+    public ushort Id { get; }
 
-    internal Pending Pending => _pending;
-
-    public ref T this[Pointer<T> pointer]
+    public ref T this[Handle<T> handle]
     {
         get
         {
             ThrowIfDisposed();
-            Debug.Assert(pointer.Data.StorageId == Id);
-            Debug.Assert(pointer.Data.Index < Length);
-            return ref _data[pointer.Data.Index];
-        }
-    }
-
-    public ref T this[ComponentHandle<T> handle]
-    {
-        get
-        {
-            ThrowIfDisposed();
-            var data = handle.Data;
-            Debug.Assert(data.StorageId == Id);
-            Debug.Assert(data.Index < Length);
-            return ref _data[data.Index];
+            return ref Get(handle);
         }
     }
 
     internal ushort Meta(nuint index) => _meta[index];
 
+    internal ushort Epoch(nuint index) => _epoch[index];
+
     public static Storage<T> From(ReadOnlySpan<T> values)
     {
         var storage = new Storage<T>((nuint)values.Length);
-        for (var i = 0; i < values.Length; i++)
+        if (!values.IsEmpty)
         {
-            storage._data[i] = values[i];
-            storage._meta[i] = 0;
+            values.CopyTo(new Span<T>(storage._data, values.Length));
+            for (var i = 0; i < values.Length; i++)
+            {
+                storage._meta[i] = 1;
+            }
         }
 
         storage.Length = (nuint)values.Length;
-        storage._pending.Epoch.SetLength(storage.Length);
         return storage;
     }
 
-    public Pointer<T> Create(T value)
+    public Handle<T> Create(T value)
     {
         ThrowIfDisposed();
-        PointerData data;
-        if (_freeList.TryPop(out data))
+        if (_freeList.TryPop(out var data))
         {
-            var i = data.Index;
-            Debug.Assert(_meta[i] == 0);
-            _data[i] = value;
-            _meta[i] = 1;
+            Store(data.Index, value);
         }
         else
         {
             var i = Length;
             EnsureCapacity(i + 1);
-            _data[i] = value;
-            _meta[i] = 1;
+            Store(i, value);
             Length++;
-            data = PointerData.New(i, 0, Id);
+            data = PointerData.New(i, _epoch[i], Id);
         }
 
-        return new Pointer<T>(data, _pending);
+        return new Handle<T>(data.Value);
     }
 
-    public void SyncPending()
+    public bool Destroy(Handle<T> handle)
     {
         ThrowIfDisposed();
-        lock (_pending.Gate)
+        var data = handle.Data;
+        if (!IsAlive(data))
         {
-            _pending.Epoch.SetLength(Length);
-
-            for (nuint i = 0; i < _pending.AddRef.Length; i++)
-            {
-                _meta[_pending.AddRef[i]]++;
-            }
-
-            _pending.AddRef.Clear();
-
-            for (nuint i = 0; i < _pending.SubRef.Length; i++)
-            {
-                var index = _pending.SubRef[i];
-                _meta[index]--;
-                if (_meta[index] == 0)
-                {
-                    _pending.Epoch[index]++;
-                    _freeList.Push(PointerData.New(index, _pending.Epoch[index], Id));
-                }
-            }
-
-            _pending.SubRef.Clear();
+            return false;
         }
+
+        _meta[data.Index] = 0;
+        unchecked
+        {
+            _epoch[data.Index]++;
+        }
+
+        _freeList.Push(PointerData.New(data.Index, _epoch[data.Index], Id));
+        return true;
     }
 
     public Iter<T> Iter()
@@ -158,21 +129,53 @@ public unsafe sealed class Storage<T> : IDisposable
         return new IterMut<T>(_data, _meta, Length, skipLost: false);
     }
 
-    public Pointer<T> Pin(Item<T> item)
+    public Handle<T> Pin(Item<T> item)
     {
         ThrowIfDisposed();
-        lock (_pending.Gate)
-        {
-            _pending.AddRef.Push(item.Index);
-            return new Pointer<T>(PointerData.New(item.Index, _pending.GetEpoch(item.Index), Id), _pending);
-        }
+        Debug.Assert(item.Index < Length);
+        return new Handle<T>(PointerData.New(item.Index, _epoch[item.Index], Id).Value);
     }
 
-    public void Split(Pointer<T> pointer, out Slice<T> left, out Ref<T> item, out Slice<T> right)
+    public bool Contains(Handle<T> handle)
     {
         ThrowIfDisposed();
-        Debug.Assert(pointer.Data.StorageId == Id);
-        SplitRaw(pointer.Data, out left, out var current, out right);
+        return IsAlive(handle.Data);
+    }
+
+    public bool TryGet(Handle<T> handle, out Ref<T> value)
+    {
+        ThrowIfDisposed();
+        var data = handle.Data;
+        if (!IsAlive(data))
+        {
+            value = default;
+            return false;
+        }
+
+        value = new Ref<T>(_data + data.Index);
+        return true;
+    }
+
+    public ref T Get(Handle<T> handle)
+    {
+        ThrowIfDisposed();
+        var data = handle.Data;
+        ThrowIfNotAlive(data);
+        return ref _data[data.Index];
+    }
+
+    public ref T GetUnchecked(Handle<T> handle)
+    {
+        ThrowIfDisposed();
+        return ref _data[handle.Index];
+    }
+
+    public void Split(Handle<T> handle, out Slice<T> left, out Ref<T> item, out Slice<T> right)
+    {
+        ThrowIfDisposed();
+        var data = handle.Data;
+        ThrowIfNotAlive(data);
+        SplitRaw(data, out left, out var current, out right);
         item = new Ref<T>(current);
     }
 
@@ -206,12 +209,14 @@ public unsafe sealed class Storage<T> : IDisposable
 
         NativeMemory.Free(_data);
         NativeMemory.Free(_meta);
+        NativeMemory.Free(_epoch);
         _data = null;
         _meta = null;
+        _epoch = null;
         _capacity = 0;
         Length = 0;
         _freeList.Dispose();
-        _pending.Dispose();
+        StorageIdAllocator.Return(Id);
         _disposed = true;
     }
 
@@ -222,25 +227,96 @@ public unsafe sealed class Storage<T> : IDisposable
             return;
         }
 
-        var next = _capacity == 0 ? (nuint)4 : _capacity * 2;
+        var next = GetNextCapacity(capacity);
+
+        _data = (T*)NativeMemory.Realloc(_data, next * (nuint)sizeof(T));
+        _meta = (ushort*)NativeMemory.Realloc(_meta, next * sizeof(ushort));
+        _epoch = (ushort*)NativeMemory.Realloc(_epoch, next * sizeof(ushort));
+        NativeMemory.Clear(_meta + _capacity, (next - _capacity) * sizeof(ushort));
+        NativeMemory.Clear(_epoch + _capacity, (next - _capacity) * sizeof(ushort));
+        _capacity = next;
+    }
+
+    private void Store(nuint index, T value)
+    {
+        Debug.Assert(_meta[index] == 0);
+        _data[index] = value;
+        _meta[index] = 1;
+    }
+
+    private nuint GetNextCapacity(nuint capacity)
+    {
+        var next = _capacity == 0 ? 4 : _capacity * 2;
         while (next < capacity)
         {
             next *= 2;
         }
 
-        _data = (T*)NativeMemory.Realloc(_data, next * (nuint)sizeof(T));
-        _meta = (ushort*)NativeMemory.Realloc(_meta, next * (nuint)sizeof(ushort));
-        NativeMemory.Clear(_meta + _capacity, (next - _capacity) * (nuint)sizeof(ushort));
-        _capacity = next;
+        return next;
     }
 
     private void ThrowIfDisposed()
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
     }
+
+    private bool IsAlive(PointerData data)
+    {
+        return data.StorageId == Id &&
+            data.Index < Length &&
+            _meta[data.Index] != 0 &&
+            _epoch[data.Index] == data.Epoch;
+    }
+
+    private void ThrowIfNotAlive(PointerData data)
+    {
+        if (!IsAlive(data))
+        {
+            throw new InvalidHandleException();
+        }
+    }
 }
 
-public unsafe readonly ref struct Item<T>
+internal static class StorageIdAllocator
+{
+    private static int _storageUid;
+    private static readonly Lock _gate = new();
+    private static readonly Stack<ushort> _freeIds = [];
+
+    public static ushort Next()
+    {
+        lock (_gate)
+        {
+            if (_freeIds.TryPop(out var id))
+            {
+                return id;
+            }
+
+            var uid = ++_storageUid;
+            if (uid > ushort.MaxValue)
+            {
+                throw new InvalidOperationException("The graph storage id space is exhausted.");
+            }
+
+            return (ushort)uid;
+        }
+    }
+
+    public static void Return(ushort id)
+    {
+        if (id == 0)
+        {
+            return;
+        }
+
+        lock (_gate)
+        {
+            _freeIds.Push(id);
+        }
+    }
+}
+
+public readonly unsafe ref struct Item<T>
     where T : unmanaged
 {
     private readonly T* _value;

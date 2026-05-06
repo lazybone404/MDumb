@@ -47,7 +47,7 @@ public class DemoApp
     }
 
     [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
-    private unsafe static int MainLoop(double timestamp, void* userdata)
+    private static unsafe int MainLoop(double timestamp, void* userdata)
     {
         var self = _current!;
         self._frameCount++;

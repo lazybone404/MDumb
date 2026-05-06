@@ -2,31 +2,31 @@ using System.Diagnostics;
 
 namespace Dumb.Engine.Graph;
 
-public unsafe readonly ref struct Slice<T>
+public readonly unsafe ref struct Slice<T>
     where T : unmanaged
 {
     private readonly T* _items;
-    private readonly nuint _length;
     private readonly PointerData _offset;
 
     internal Slice(T* items, nuint length, PointerData offset)
     {
         _items = items;
-        _length = length;
+        Length = length;
         _offset = offset;
     }
 
-    public bool IsEmpty => _length == 0;
+    public bool IsEmpty => Length == 0;
 
-    public nuint Length => _length;
+    public nuint Length { get; }
 
     public ref T this[nuint index] => ref _items[index];
 
-    public bool TryGet(Pointer<T> pointer, out T* value)
+    public bool TryGet(Handle<T> handle, out T* value)
     {
-        Debug.Assert(pointer.Data.StorageId == _offset.StorageId);
-        var index = pointer.Data.Index - _offset.Index;
-        if (index >= _length)
+        var data = handle.Data;
+        Debug.Assert(data.StorageId == _offset.StorageId);
+        var index = data.Index - _offset.Index;
+        if (index >= Length)
         {
             value = null;
             return false;
@@ -36,9 +36,9 @@ public unsafe readonly ref struct Slice<T>
         return true;
     }
 
-    public bool TryGetRef(Pointer<T> pointer, out Ref<T> value)
+    public bool TryGetRef(Handle<T> handle, out Ref<T> value)
     {
-        if (TryGet(pointer, out var item))
+        if (TryGet(handle, out var item))
         {
             value = new Ref<T>(item);
             return true;
@@ -49,15 +49,12 @@ public unsafe readonly ref struct Slice<T>
     }
 }
 
-public unsafe readonly ref struct Ref<T>
+public readonly unsafe ref struct Ref<T>
     where T : unmanaged
 {
     private readonly T* _value;
 
-    internal Ref(T* value)
-    {
-        _value = value;
-    }
+    internal Ref(T* value) => _value = value;
 
     public ref T Value => ref *_value;
 }

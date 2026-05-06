@@ -10,12 +10,12 @@ public partial class WGPUBrowser : IDisposable
     public unsafe Instance* CreateInstance(InstanceDescriptor* descriptor)
     {
         WGPUInstanceDescriptor* nativeDescriptor = null;
-        WGPUInstanceDescriptor nativeDescriptorValue = default;
         if (descriptor != null)
         {
-            nativeDescriptorValue = (*descriptor).Cast();
+            var nativeDescriptorValue = (*descriptor).Cast();
             nativeDescriptor = &nativeDescriptorValue;
         }
+
         return WgpuCast.Cast(WGPUBrowserNative.CreateInstance(nativeDescriptor));
     }
 
@@ -48,7 +48,8 @@ public partial class WGPUBrowser : IDisposable
 
     public unsafe nuint AdapterEnumerateFeatures(Adapter* adapter, ref FeatureName features)
     {
-        return WGPUBrowserNative.AdapterEnumerateFeatures(WgpuCast.Cast(adapter), ref global::System.Runtime.CompilerServices.Unsafe.As<FeatureName, WGPUFeatureName>(ref features));
+        return WGPUBrowserNative.AdapterEnumerateFeatures(WgpuCast.Cast(adapter),
+            ref Unsafe.As<FeatureName, WGPUFeatureName>(ref features));
     }
 
     public unsafe bool AdapterGetLimits(Adapter* adapter, SupportedLimits* limits)
@@ -74,6 +75,7 @@ public partial class WGPUBrowser : IDisposable
             WGPUBrowserNative.AdapterGetProperties(WgpuCast.Cast(adapter), null);
             return;
         }
+
         var nativeProperties = default(WGPUAdapterProperties);
         WGPUBrowserNative.AdapterGetProperties(WgpuCast.Cast(adapter), &nativeProperties);
         *properties = nativeProperties.Cast();
@@ -94,12 +96,12 @@ public partial class WGPUBrowser : IDisposable
         delegate* unmanaged[Cdecl]<RequestDeviceStatus, Device*, byte*, void*, void> callback, void* userdata)
     {
         WGPUDeviceDescriptor* nativeDescriptor = null;
-        WGPUDeviceDescriptor nativeDescriptorValue = default;
         if (descriptor != null)
         {
-            nativeDescriptorValue = (*descriptor).Cast();
+            var nativeDescriptorValue = (*descriptor).Cast();
             nativeDescriptor = &nativeDescriptorValue;
         }
+
         WGPUBrowserNative.AdapterRequestDevice(WgpuCast.Cast(adapter), nativeDescriptor, (nint)callback, userdata);
     }
 
@@ -201,7 +203,8 @@ public partial class WGPUBrowser : IDisposable
         return (BufferUsage)WGPUBrowserNative.BufferGetUsage(WgpuCast.Cast(buffer));
     }
 
-    public unsafe void BufferMapAsync(Buffer* buffer, MapMode mode, nuint offset, nuint size, nint callback, void* userdata)
+    public unsafe void BufferMapAsync(Buffer* buffer, MapMode mode, nuint offset, nuint size, nint callback,
+        void* userdata)
     {
         WGPUBrowserNative.BufferMapAsync(WgpuCast.Cast(buffer), (WGPUMapMode)mode, offset, size, callback, userdata);
     }
@@ -261,323 +264,472 @@ public partial class WGPUBrowser : IDisposable
         WGPUBrowserNative.CommandBufferRelease(WgpuCast.Cast(commandBuffer));
     }
 
-    public unsafe ComputePassEncoder* CommandEncoderBeginComputePass(CommandEncoder* commandEncoder, ComputePassDescriptor* descriptor)
+    public unsafe ComputePassEncoder* CommandEncoderBeginComputePass(CommandEncoder* commandEncoder,
+        ComputePassDescriptor* descriptor)
     {
         WGPUComputePassDescriptor* nativeDescriptor = null;
-        WGPUComputePassDescriptor nativeDescriptorValue = default;
         if (descriptor != null)
         {
-            nativeDescriptorValue = (*descriptor).Cast();
+            var nativeDescriptorValue = (*descriptor).Cast();
             nativeDescriptor = &nativeDescriptorValue;
         }
-        return WgpuCast.Cast(WGPUBrowserNative.CommandEncoderBeginComputePass(WgpuCast.Cast(commandEncoder), nativeDescriptor));
+
+        return WgpuCast.Cast(
+            WGPUBrowserNative.CommandEncoderBeginComputePass(WgpuCast.Cast(commandEncoder), nativeDescriptor));
     }
 
-    public unsafe ComputePassEncoder* CommandEncoderBeginComputePass(CommandEncoder* commandEncoder, in ComputePassDescriptor descriptor)
+    public unsafe ComputePassEncoder* CommandEncoderBeginComputePass(CommandEncoder* commandEncoder,
+        in ComputePassDescriptor descriptor)
     {
         var d = descriptor;
         var nativeDescriptor = d.Cast();
-        return WgpuCast.Cast(WGPUBrowserNative.CommandEncoderBeginComputePass(WgpuCast.Cast(commandEncoder), in nativeDescriptor));
+        return WgpuCast.Cast(
+            WGPUBrowserNative.CommandEncoderBeginComputePass(WgpuCast.Cast(commandEncoder), in nativeDescriptor));
     }
 
-    public unsafe RenderPassEncoder* CommandEncoderBeginRenderPass(CommandEncoder* commandEncoder, RenderPassDescriptor* descriptor)
+    public unsafe RenderPassEncoder* CommandEncoderBeginRenderPass(CommandEncoder* commandEncoder,
+        RenderPassDescriptor* descriptor)
     {
         WGPURenderPassDescriptor* nativeDescriptor = null;
-        WGPURenderPassDescriptor nativeDescriptorValue = default;
         if (descriptor != null)
         {
-            nativeDescriptorValue = (*descriptor).Cast();
+            var nativeDescriptorValue = (*descriptor).Cast();
             nativeDescriptor = &nativeDescriptorValue;
         }
-        return WgpuCast.Cast(WGPUBrowserNative.CommandEncoderBeginRenderPass(WgpuCast.Cast(commandEncoder), nativeDescriptor));
+
+        return WgpuCast.Cast(
+            WGPUBrowserNative.CommandEncoderBeginRenderPass(WgpuCast.Cast(commandEncoder), nativeDescriptor));
     }
 
-    public unsafe RenderPassEncoder* CommandEncoderBeginRenderPass(CommandEncoder* commandEncoder, in RenderPassDescriptor descriptor)
+    public unsafe RenderPassEncoder* CommandEncoderBeginRenderPass(CommandEncoder* commandEncoder,
+        in RenderPassDescriptor descriptor)
     {
         var d = descriptor;
         var nativeDescriptor = d.Cast();
-        return WgpuCast.Cast(WGPUBrowserNative.CommandEncoderBeginRenderPass(WgpuCast.Cast(commandEncoder), in nativeDescriptor));
+        return WgpuCast.Cast(
+            WGPUBrowserNative.CommandEncoderBeginRenderPass(WgpuCast.Cast(commandEncoder), in nativeDescriptor));
     }
 
-    public unsafe void CommandEncoderClearBuffer(CommandEncoder* commandEncoder, Buffer* buffer, ulong offset, ulong size)
+    public unsafe void CommandEncoderClearBuffer(CommandEncoder* commandEncoder, Buffer* buffer, ulong offset,
+        ulong size)
     {
         WGPUBrowserNative.CommandEncoderClearBuffer(WgpuCast.Cast(commandEncoder), WgpuCast.Cast(buffer), offset, size);
     }
 
-    public unsafe void CommandEncoderCopyBufferToBuffer(CommandEncoder* commandEncoder, Buffer* source, ulong sourceOffset, Buffer* destination, ulong destinationOffset, ulong size)
+    public unsafe void CommandEncoderCopyBufferToBuffer(CommandEncoder* commandEncoder, Buffer* source,
+        ulong sourceOffset, Buffer* destination, ulong destinationOffset, ulong size)
     {
-        WGPUBrowserNative.CommandEncoderCopyBufferToBuffer(WgpuCast.Cast(commandEncoder), WgpuCast.Cast(source), sourceOffset, WgpuCast.Cast(destination), destinationOffset, size);
+        WGPUBrowserNative.CommandEncoderCopyBufferToBuffer(WgpuCast.Cast(commandEncoder), WgpuCast.Cast(source),
+            sourceOffset, WgpuCast.Cast(destination), destinationOffset, size);
     }
 
-    public unsafe void CommandEncoderCopyBufferToTexture(CommandEncoder* commandEncoder, ImageCopyBuffer* source, ImageCopyTexture* destination, Extent3D* copySize)
+    public unsafe void CommandEncoderCopyBufferToTexture(CommandEncoder* commandEncoder, ImageCopyBuffer* source,
+        ImageCopyTexture* destination, Extent3D* copySize)
     {
         WGPUImageCopyBuffer* nativeSource = null;
-        WGPUImageCopyBuffer nativeSourceValue = default;
-        if (source != null) { nativeSourceValue = (*source).Cast(); nativeSource = &nativeSourceValue; }
-        WGPUImageCopyTexture* nativeDest = null;
-        WGPUImageCopyTexture nativeDestValue = default;
-        if (destination != null) { nativeDestValue = (*destination).Cast(); nativeDest = &nativeDestValue; }
-        WGPUBrowserNative.CommandEncoderCopyBufferToTexture(WgpuCast.Cast(commandEncoder), nativeSource, nativeDest, (WGPUExtent3D*)copySize);
-    }
+        if (source != null)
+        {
+            var nativeSourceValue = (*source).Cast();
+            nativeSource = &nativeSourceValue;
+        }
 
-    public unsafe void CommandEncoderCopyBufferToTexture(CommandEncoder* commandEncoder, ImageCopyBuffer* source, ImageCopyTexture* destination, in Extent3D copySize)
-    {
-        WGPUImageCopyBuffer* nativeSource = null;
-        WGPUImageCopyBuffer nativeSourceValue = default;
-        if (source != null) { nativeSourceValue = (*source).Cast(); nativeSource = &nativeSourceValue; }
         WGPUImageCopyTexture* nativeDest = null;
-        WGPUImageCopyTexture nativeDestValue = default;
-        if (destination != null) { nativeDestValue = (*destination).Cast(); nativeDest = &nativeDestValue; }
+        if (destination != null)
+        {
+            var nativeDestValue = (*destination).Cast();
+            nativeDest = &nativeDestValue;
+        }
+
         WGPUBrowserNative.CommandEncoderCopyBufferToTexture(WgpuCast.Cast(commandEncoder), nativeSource, nativeDest,
-            in WgpuCast.Cast(ref Unsafe.AsRef(in copySize)));
+            (WGPUExtent3D*)copySize);
     }
 
-    public unsafe void CommandEncoderCopyBufferToTexture(CommandEncoder* commandEncoder, ImageCopyBuffer* source, in ImageCopyTexture destination, Extent3D* copySize)
+    public unsafe void CommandEncoderCopyBufferToTexture(CommandEncoder* commandEncoder, ImageCopyBuffer* source,
+        ImageCopyTexture* destination, in Extent3D copySize)
     {
         WGPUImageCopyBuffer* nativeSource = null;
-        WGPUImageCopyBuffer nativeSourceValue = default;
-        if (source != null) { nativeSourceValue = (*source).Cast(); nativeSource = &nativeSourceValue; }
-        var dst = destination;
-        var nativeDest = dst.Cast();
-        WGPUBrowserNative.CommandEncoderCopyBufferToTexture(WgpuCast.Cast(commandEncoder), nativeSource, in nativeDest, (WGPUExtent3D*)copySize);
+        if (source != null)
+        {
+            var nativeSourceValue = (*source).Cast();
+            nativeSource = &nativeSourceValue;
+        }
+
+        WGPUImageCopyTexture* nativeDest = null;
+        if (destination != null)
+        {
+            var nativeDestValue = (*destination).Cast();
+            nativeDest = &nativeDestValue;
+        }
+
+        WGPUBrowserNative.CommandEncoderCopyBufferToTexture(WgpuCast.Cast(commandEncoder), nativeSource, nativeDest,
+            in Unsafe.AsRef(in copySize).Cast());
     }
 
-    public unsafe void CommandEncoderCopyBufferToTexture(CommandEncoder* commandEncoder, ImageCopyBuffer* source, in ImageCopyTexture destination, in Extent3D copySize)
+    public unsafe void CommandEncoderCopyBufferToTexture(CommandEncoder* commandEncoder, ImageCopyBuffer* source,
+        in ImageCopyTexture destination, Extent3D* copySize)
     {
         WGPUImageCopyBuffer* nativeSource = null;
-        WGPUImageCopyBuffer nativeSourceValue = default;
-        if (source != null) { nativeSourceValue = (*source).Cast(); nativeSource = &nativeSourceValue; }
+        if (source != null)
+        {
+            var nativeSourceValue = (*source).Cast();
+            nativeSource = &nativeSourceValue;
+        }
+
         var dst = destination;
         var nativeDest = dst.Cast();
         WGPUBrowserNative.CommandEncoderCopyBufferToTexture(WgpuCast.Cast(commandEncoder), nativeSource, in nativeDest,
-            in WgpuCast.Cast(ref Unsafe.AsRef(in copySize)));
+            (WGPUExtent3D*)copySize);
     }
 
-    public unsafe void CommandEncoderCopyBufferToTexture(CommandEncoder* commandEncoder, in ImageCopyBuffer source, ImageCopyTexture* destination, Extent3D* copySize)
+    public unsafe void CommandEncoderCopyBufferToTexture(CommandEncoder* commandEncoder, ImageCopyBuffer* source,
+        in ImageCopyTexture destination, in Extent3D copySize)
+    {
+        WGPUImageCopyBuffer* nativeSource = null;
+        if (source != null)
+        {
+            var nativeSourceValue = (*source).Cast();
+            nativeSource = &nativeSourceValue;
+        }
+
+        var dst = destination;
+        var nativeDest = dst.Cast();
+        WGPUBrowserNative.CommandEncoderCopyBufferToTexture(WgpuCast.Cast(commandEncoder), nativeSource, in nativeDest,
+            in Unsafe.AsRef(in copySize).Cast());
+    }
+
+    public unsafe void CommandEncoderCopyBufferToTexture(CommandEncoder* commandEncoder, in ImageCopyBuffer source,
+        ImageCopyTexture* destination, Extent3D* copySize)
     {
         var s = source;
         var nativeSource = s.Cast();
         WGPUImageCopyTexture* nativeDest = null;
-        WGPUImageCopyTexture nativeDestValue = default;
-        if (destination != null) { nativeDestValue = (*destination).Cast(); nativeDest = &nativeDestValue; }
-        WGPUBrowserNative.CommandEncoderCopyBufferToTexture(WgpuCast.Cast(commandEncoder), in nativeSource, nativeDest, (WGPUExtent3D*)copySize);
-    }
+        if (destination != null)
+        {
+            var nativeDestValue = (*destination).Cast();
+            nativeDest = &nativeDestValue;
+        }
 
-    public unsafe void CommandEncoderCopyBufferToTexture(CommandEncoder* commandEncoder, in ImageCopyBuffer source, ImageCopyTexture* destination, in Extent3D copySize)
-    {
-        var s = source;
-        var nativeSource = s.Cast();
-        WGPUImageCopyTexture* nativeDest = null;
-        WGPUImageCopyTexture nativeDestValue = default;
-        if (destination != null) { nativeDestValue = (*destination).Cast(); nativeDest = &nativeDestValue; }
         WGPUBrowserNative.CommandEncoderCopyBufferToTexture(WgpuCast.Cast(commandEncoder), in nativeSource, nativeDest,
-            in WgpuCast.Cast(ref Unsafe.AsRef(in copySize)));
+            (WGPUExtent3D*)copySize);
     }
 
-    public unsafe void CommandEncoderCopyBufferToTexture(CommandEncoder* commandEncoder, in ImageCopyBuffer source, in ImageCopyTexture destination, Extent3D* copySize)
+    public unsafe void CommandEncoderCopyBufferToTexture(CommandEncoder* commandEncoder, in ImageCopyBuffer source,
+        ImageCopyTexture* destination, in Extent3D copySize)
+    {
+        var s = source;
+        var nativeSource = s.Cast();
+        WGPUImageCopyTexture* nativeDest = null;
+        if (destination != null)
+        {
+            var nativeDestValue = (*destination).Cast();
+            nativeDest = &nativeDestValue;
+        }
+
+        WGPUBrowserNative.CommandEncoderCopyBufferToTexture(WgpuCast.Cast(commandEncoder), in nativeSource, nativeDest,
+            in Unsafe.AsRef(in copySize).Cast());
+    }
+
+    public unsafe void CommandEncoderCopyBufferToTexture(CommandEncoder* commandEncoder, in ImageCopyBuffer source,
+        in ImageCopyTexture destination, Extent3D* copySize)
     {
         var s = source;
         var nativeSource = s.Cast();
         var dst = destination;
         var nativeDest = dst.Cast();
-        WGPUBrowserNative.CommandEncoderCopyBufferToTexture(WgpuCast.Cast(commandEncoder), in nativeSource, in nativeDest, (WGPUExtent3D*)copySize);
+        WGPUBrowserNative.CommandEncoderCopyBufferToTexture(WgpuCast.Cast(commandEncoder), in nativeSource,
+            in nativeDest, (WGPUExtent3D*)copySize);
     }
 
-    public unsafe void CommandEncoderCopyBufferToTexture(CommandEncoder* commandEncoder, in ImageCopyBuffer source, in ImageCopyTexture destination, in Extent3D copySize)
+    public unsafe void CommandEncoderCopyBufferToTexture(CommandEncoder* commandEncoder, in ImageCopyBuffer source,
+        in ImageCopyTexture destination, in Extent3D copySize)
     {
         var s = source;
         var nativeSource = s.Cast();
         var dst = destination;
         var nativeDest = dst.Cast();
-        WGPUBrowserNative.CommandEncoderCopyBufferToTexture(WgpuCast.Cast(commandEncoder), in nativeSource, in nativeDest,
-            in WgpuCast.Cast(ref Unsafe.AsRef(in copySize)));
+        WGPUBrowserNative.CommandEncoderCopyBufferToTexture(WgpuCast.Cast(commandEncoder), in nativeSource,
+            in nativeDest,
+            in Unsafe.AsRef(in copySize).Cast());
     }
 
-    public unsafe void CommandEncoderCopyTextureToBuffer(CommandEncoder* commandEncoder, ImageCopyTexture* source, ImageCopyBuffer* destination, Extent3D* copySize)
+    public unsafe void CommandEncoderCopyTextureToBuffer(CommandEncoder* commandEncoder, ImageCopyTexture* source,
+        ImageCopyBuffer* destination, Extent3D* copySize)
     {
         WGPUImageCopyTexture* nativeSource = null;
-        WGPUImageCopyTexture nativeSourceValue = default;
-        if (source != null) { nativeSourceValue = (*source).Cast(); nativeSource = &nativeSourceValue; }
-        WGPUImageCopyBuffer* nativeDest = null;
-        WGPUImageCopyBuffer nativeDestValue = default;
-        if (destination != null) { nativeDestValue = (*destination).Cast(); nativeDest = &nativeDestValue; }
-        WGPUBrowserNative.CommandEncoderCopyTextureToBuffer(WgpuCast.Cast(commandEncoder), nativeSource, nativeDest, (WGPUExtent3D*)copySize);
-    }
+        if (source != null)
+        {
+            var nativeSourceValue = (*source).Cast();
+            nativeSource = &nativeSourceValue;
+        }
 
-    public unsafe void CommandEncoderCopyTextureToBuffer(CommandEncoder* commandEncoder, ImageCopyTexture* source, ImageCopyBuffer* destination, in Extent3D copySize)
-    {
-        WGPUImageCopyTexture* nativeSource = null;
-        WGPUImageCopyTexture nativeSourceValue = default;
-        if (source != null) { nativeSourceValue = (*source).Cast(); nativeSource = &nativeSourceValue; }
         WGPUImageCopyBuffer* nativeDest = null;
-        WGPUImageCopyBuffer nativeDestValue = default;
-        if (destination != null) { nativeDestValue = (*destination).Cast(); nativeDest = &nativeDestValue; }
+        if (destination != null)
+        {
+            var nativeDestValue = (*destination).Cast();
+            nativeDest = &nativeDestValue;
+        }
+
         WGPUBrowserNative.CommandEncoderCopyTextureToBuffer(WgpuCast.Cast(commandEncoder), nativeSource, nativeDest,
-            in WgpuCast.Cast(ref Unsafe.AsRef(in copySize)));
+            (WGPUExtent3D*)copySize);
     }
 
-    public unsafe void CommandEncoderCopyTextureToBuffer(CommandEncoder* commandEncoder, ImageCopyTexture* source, in ImageCopyBuffer destination, Extent3D* copySize)
+    public unsafe void CommandEncoderCopyTextureToBuffer(CommandEncoder* commandEncoder, ImageCopyTexture* source,
+        ImageCopyBuffer* destination, in Extent3D copySize)
     {
         WGPUImageCopyTexture* nativeSource = null;
-        WGPUImageCopyTexture nativeSourceValue = default;
-        if (source != null) { nativeSourceValue = (*source).Cast(); nativeSource = &nativeSourceValue; }
-        var dst = destination;
-        var nativeDest = dst.Cast();
-        WGPUBrowserNative.CommandEncoderCopyTextureToBuffer(WgpuCast.Cast(commandEncoder), nativeSource, in nativeDest, (WGPUExtent3D*)copySize);
+        if (source != null)
+        {
+            var nativeSourceValue = (*source).Cast();
+            nativeSource = &nativeSourceValue;
+        }
+
+        WGPUImageCopyBuffer* nativeDest = null;
+        if (destination != null)
+        {
+            var nativeDestValue = (*destination).Cast();
+            nativeDest = &nativeDestValue;
+        }
+
+        WGPUBrowserNative.CommandEncoderCopyTextureToBuffer(WgpuCast.Cast(commandEncoder), nativeSource, nativeDest,
+            in Unsafe.AsRef(in copySize).Cast());
     }
 
-    public unsafe void CommandEncoderCopyTextureToBuffer(CommandEncoder* commandEncoder, ImageCopyTexture* source, in ImageCopyBuffer destination, in Extent3D copySize)
+    public unsafe void CommandEncoderCopyTextureToBuffer(CommandEncoder* commandEncoder, ImageCopyTexture* source,
+        in ImageCopyBuffer destination, Extent3D* copySize)
     {
         WGPUImageCopyTexture* nativeSource = null;
-        WGPUImageCopyTexture nativeSourceValue = default;
-        if (source != null) { nativeSourceValue = (*source).Cast(); nativeSource = &nativeSourceValue; }
+        if (source != null)
+        {
+            var nativeSourceValue = (*source).Cast();
+            nativeSource = &nativeSourceValue;
+        }
+
         var dst = destination;
         var nativeDest = dst.Cast();
         WGPUBrowserNative.CommandEncoderCopyTextureToBuffer(WgpuCast.Cast(commandEncoder), nativeSource, in nativeDest,
-            in WgpuCast.Cast(ref Unsafe.AsRef(in copySize)));
+            (WGPUExtent3D*)copySize);
     }
 
-    public unsafe void CommandEncoderCopyTextureToBuffer(CommandEncoder* commandEncoder, in ImageCopyTexture source, ImageCopyBuffer* destination, Extent3D* copySize)
+    public unsafe void CommandEncoderCopyTextureToBuffer(CommandEncoder* commandEncoder, ImageCopyTexture* source,
+        in ImageCopyBuffer destination, in Extent3D copySize)
+    {
+        WGPUImageCopyTexture* nativeSource = null;
+        if (source != null)
+        {
+            var nativeSourceValue = (*source).Cast();
+            nativeSource = &nativeSourceValue;
+        }
+
+        var dst = destination;
+        var nativeDest = dst.Cast();
+        WGPUBrowserNative.CommandEncoderCopyTextureToBuffer(WgpuCast.Cast(commandEncoder), nativeSource, in nativeDest,
+            in Unsafe.AsRef(in copySize).Cast());
+    }
+
+    public unsafe void CommandEncoderCopyTextureToBuffer(CommandEncoder* commandEncoder, in ImageCopyTexture source,
+        ImageCopyBuffer* destination, Extent3D* copySize)
     {
         var s = source;
         var nativeSource = s.Cast();
         WGPUImageCopyBuffer* nativeDest = null;
-        WGPUImageCopyBuffer nativeDestValue = default;
-        if (destination != null) { nativeDestValue = (*destination).Cast(); nativeDest = &nativeDestValue; }
-        WGPUBrowserNative.CommandEncoderCopyTextureToBuffer(WgpuCast.Cast(commandEncoder), in nativeSource, nativeDest, (WGPUExtent3D*)copySize);
-    }
+        if (destination != null)
+        {
+            var nativeDestValue = (*destination).Cast();
+            nativeDest = &nativeDestValue;
+        }
 
-    public unsafe void CommandEncoderCopyTextureToBuffer(CommandEncoder* commandEncoder, in ImageCopyTexture source, ImageCopyBuffer* destination, in Extent3D copySize)
-    {
-        var s = source;
-        var nativeSource = s.Cast();
-        WGPUImageCopyBuffer* nativeDest = null;
-        WGPUImageCopyBuffer nativeDestValue = default;
-        if (destination != null) { nativeDestValue = (*destination).Cast(); nativeDest = &nativeDestValue; }
         WGPUBrowserNative.CommandEncoderCopyTextureToBuffer(WgpuCast.Cast(commandEncoder), in nativeSource, nativeDest,
-            in WgpuCast.Cast(ref Unsafe.AsRef(in copySize)));
+            (WGPUExtent3D*)copySize);
     }
 
-    public unsafe void CommandEncoderCopyTextureToBuffer(CommandEncoder* commandEncoder, in ImageCopyTexture source, in ImageCopyBuffer destination, Extent3D* copySize)
+    public unsafe void CommandEncoderCopyTextureToBuffer(CommandEncoder* commandEncoder, in ImageCopyTexture source,
+        ImageCopyBuffer* destination, in Extent3D copySize)
+    {
+        var s = source;
+        var nativeSource = s.Cast();
+        WGPUImageCopyBuffer* nativeDest = null;
+        if (destination != null)
+        {
+            var nativeDestValue = (*destination).Cast();
+            nativeDest = &nativeDestValue;
+        }
+
+        WGPUBrowserNative.CommandEncoderCopyTextureToBuffer(WgpuCast.Cast(commandEncoder), in nativeSource, nativeDest,
+            in Unsafe.AsRef(in copySize).Cast());
+    }
+
+    public unsafe void CommandEncoderCopyTextureToBuffer(CommandEncoder* commandEncoder, in ImageCopyTexture source,
+        in ImageCopyBuffer destination, Extent3D* copySize)
     {
         var s = source;
         var nativeSource = s.Cast();
         var dst = destination;
         var nativeDest = dst.Cast();
-        WGPUBrowserNative.CommandEncoderCopyTextureToBuffer(WgpuCast.Cast(commandEncoder), in nativeSource, in nativeDest, (WGPUExtent3D*)copySize);
+        WGPUBrowserNative.CommandEncoderCopyTextureToBuffer(WgpuCast.Cast(commandEncoder), in nativeSource,
+            in nativeDest, (WGPUExtent3D*)copySize);
     }
 
-    public unsafe void CommandEncoderCopyTextureToBuffer(CommandEncoder* commandEncoder, in ImageCopyTexture source, in ImageCopyBuffer destination, in Extent3D copySize)
+    public unsafe void CommandEncoderCopyTextureToBuffer(CommandEncoder* commandEncoder, in ImageCopyTexture source,
+        in ImageCopyBuffer destination, in Extent3D copySize)
     {
         var s = source;
         var nativeSource = s.Cast();
         var dst = destination;
         var nativeDest = dst.Cast();
-        WGPUBrowserNative.CommandEncoderCopyTextureToBuffer(WgpuCast.Cast(commandEncoder), in nativeSource, in nativeDest,
-            in WgpuCast.Cast(ref Unsafe.AsRef(in copySize)));
+        WGPUBrowserNative.CommandEncoderCopyTextureToBuffer(WgpuCast.Cast(commandEncoder), in nativeSource,
+            in nativeDest,
+            in Unsafe.AsRef(in copySize).Cast());
     }
 
-    public unsafe void CommandEncoderCopyTextureToTexture(CommandEncoder* commandEncoder, ImageCopyTexture* source, ImageCopyTexture* destination, Extent3D* copySize)
+    public unsafe void CommandEncoderCopyTextureToTexture(CommandEncoder* commandEncoder, ImageCopyTexture* source,
+        ImageCopyTexture* destination, Extent3D* copySize)
     {
         WGPUImageCopyTexture* nativeSource = null;
-        WGPUImageCopyTexture nativeSourceValue = default;
-        if (source != null) { nativeSourceValue = (*source).Cast(); nativeSource = &nativeSourceValue; }
-        WGPUImageCopyTexture* nativeDest = null;
-        WGPUImageCopyTexture nativeDestValue = default;
-        if (destination != null) { nativeDestValue = (*destination).Cast(); nativeDest = &nativeDestValue; }
-        WGPUBrowserNative.CommandEncoderCopyTextureToTexture(WgpuCast.Cast(commandEncoder), nativeSource, nativeDest, (WGPUExtent3D*)copySize);
-    }
+        if (source != null)
+        {
+            var nativeSourceValue = (*source).Cast();
+            nativeSource = &nativeSourceValue;
+        }
 
-    public unsafe void CommandEncoderCopyTextureToTexture(CommandEncoder* commandEncoder, ImageCopyTexture* source, ImageCopyTexture* destination, in Extent3D copySize)
-    {
-        WGPUImageCopyTexture* nativeSource = null;
-        WGPUImageCopyTexture nativeSourceValue = default;
-        if (source != null) { nativeSourceValue = (*source).Cast(); nativeSource = &nativeSourceValue; }
         WGPUImageCopyTexture* nativeDest = null;
-        WGPUImageCopyTexture nativeDestValue = default;
-        if (destination != null) { nativeDestValue = (*destination).Cast(); nativeDest = &nativeDestValue; }
+        if (destination != null)
+        {
+            var nativeDestValue = (*destination).Cast();
+            nativeDest = &nativeDestValue;
+        }
+
         WGPUBrowserNative.CommandEncoderCopyTextureToTexture(WgpuCast.Cast(commandEncoder), nativeSource, nativeDest,
-            in WgpuCast.Cast(ref Unsafe.AsRef(in copySize)));
+            (WGPUExtent3D*)copySize);
     }
 
-    public unsafe void CommandEncoderCopyTextureToTexture(CommandEncoder* commandEncoder, ImageCopyTexture* source, in ImageCopyTexture destination, Extent3D* copySize)
+    public unsafe void CommandEncoderCopyTextureToTexture(CommandEncoder* commandEncoder, ImageCopyTexture* source,
+        ImageCopyTexture* destination, in Extent3D copySize)
     {
         WGPUImageCopyTexture* nativeSource = null;
-        WGPUImageCopyTexture nativeSourceValue = default;
-        if (source != null) { nativeSourceValue = (*source).Cast(); nativeSource = &nativeSourceValue; }
-        var dst = destination;
-        var nativeDest = dst.Cast();
-        WGPUBrowserNative.CommandEncoderCopyTextureToTexture(WgpuCast.Cast(commandEncoder), nativeSource, in nativeDest, (WGPUExtent3D*)copySize);
+        if (source != null)
+        {
+            var nativeSourceValue = (*source).Cast();
+            nativeSource = &nativeSourceValue;
+        }
+
+        WGPUImageCopyTexture* nativeDest = null;
+        if (destination != null)
+        {
+            var nativeDestValue = (*destination).Cast();
+            nativeDest = &nativeDestValue;
+        }
+
+        WGPUBrowserNative.CommandEncoderCopyTextureToTexture(WgpuCast.Cast(commandEncoder), nativeSource, nativeDest,
+            in Unsafe.AsRef(in copySize).Cast());
     }
 
-    public unsafe void CommandEncoderCopyTextureToTexture(CommandEncoder* commandEncoder, ImageCopyTexture* source, in ImageCopyTexture destination, in Extent3D copySize)
+    public unsafe void CommandEncoderCopyTextureToTexture(CommandEncoder* commandEncoder, ImageCopyTexture* source,
+        in ImageCopyTexture destination, Extent3D* copySize)
     {
         WGPUImageCopyTexture* nativeSource = null;
-        WGPUImageCopyTexture nativeSourceValue = default;
-        if (source != null) { nativeSourceValue = (*source).Cast(); nativeSource = &nativeSourceValue; }
+        if (source != null)
+        {
+            var nativeSourceValue = (*source).Cast();
+            nativeSource = &nativeSourceValue;
+        }
+
         var dst = destination;
         var nativeDest = dst.Cast();
         WGPUBrowserNative.CommandEncoderCopyTextureToTexture(WgpuCast.Cast(commandEncoder), nativeSource, in nativeDest,
-            in WgpuCast.Cast(ref Unsafe.AsRef(in copySize)));
+            (WGPUExtent3D*)copySize);
     }
 
-    public unsafe void CommandEncoderCopyTextureToTexture(CommandEncoder* commandEncoder, in ImageCopyTexture source, ImageCopyTexture* destination, Extent3D* copySize)
+    public unsafe void CommandEncoderCopyTextureToTexture(CommandEncoder* commandEncoder, ImageCopyTexture* source,
+        in ImageCopyTexture destination, in Extent3D copySize)
+    {
+        WGPUImageCopyTexture* nativeSource = null;
+        if (source != null)
+        {
+            var nativeSourceValue = (*source).Cast();
+            nativeSource = &nativeSourceValue;
+        }
+
+        var dst = destination;
+        var nativeDest = dst.Cast();
+        WGPUBrowserNative.CommandEncoderCopyTextureToTexture(WgpuCast.Cast(commandEncoder), nativeSource, in nativeDest,
+            in Unsafe.AsRef(in copySize).Cast());
+    }
+
+    public unsafe void CommandEncoderCopyTextureToTexture(CommandEncoder* commandEncoder, in ImageCopyTexture source,
+        ImageCopyTexture* destination, Extent3D* copySize)
     {
         var s = source;
         var nativeSource = s.Cast();
         WGPUImageCopyTexture* nativeDest = null;
-        WGPUImageCopyTexture nativeDestValue = default;
-        if (destination != null) { nativeDestValue = (*destination).Cast(); nativeDest = &nativeDestValue; }
-        WGPUBrowserNative.CommandEncoderCopyTextureToTexture(WgpuCast.Cast(commandEncoder), in nativeSource, nativeDest, (WGPUExtent3D*)copySize);
-    }
+        if (destination != null)
+        {
+            var nativeDestValue = (*destination).Cast();
+            nativeDest = &nativeDestValue;
+        }
 
-    public unsafe void CommandEncoderCopyTextureToTexture(CommandEncoder* commandEncoder, in ImageCopyTexture source, ImageCopyTexture* destination, in Extent3D copySize)
-    {
-        var s = source;
-        var nativeSource = s.Cast();
-        WGPUImageCopyTexture* nativeDest = null;
-        WGPUImageCopyTexture nativeDestValue = default;
-        if (destination != null) { nativeDestValue = (*destination).Cast(); nativeDest = &nativeDestValue; }
         WGPUBrowserNative.CommandEncoderCopyTextureToTexture(WgpuCast.Cast(commandEncoder), in nativeSource, nativeDest,
-            in WgpuCast.Cast(ref Unsafe.AsRef(in copySize)));
+            (WGPUExtent3D*)copySize);
     }
 
-    public unsafe void CommandEncoderCopyTextureToTexture(CommandEncoder* commandEncoder, in ImageCopyTexture source, in ImageCopyTexture destination, Extent3D* copySize)
+    public unsafe void CommandEncoderCopyTextureToTexture(CommandEncoder* commandEncoder, in ImageCopyTexture source,
+        ImageCopyTexture* destination, in Extent3D copySize)
+    {
+        var s = source;
+        var nativeSource = s.Cast();
+        WGPUImageCopyTexture* nativeDest = null;
+        if (destination != null)
+        {
+            var nativeDestValue = (*destination).Cast();
+            nativeDest = &nativeDestValue;
+        }
+
+        WGPUBrowserNative.CommandEncoderCopyTextureToTexture(WgpuCast.Cast(commandEncoder), in nativeSource, nativeDest,
+            in Unsafe.AsRef(in copySize).Cast());
+    }
+
+    public unsafe void CommandEncoderCopyTextureToTexture(CommandEncoder* commandEncoder, in ImageCopyTexture source,
+        in ImageCopyTexture destination, Extent3D* copySize)
     {
         var s = source;
         var nativeSource = s.Cast();
         var dst = destination;
         var nativeDest = dst.Cast();
-        WGPUBrowserNative.CommandEncoderCopyTextureToTexture(WgpuCast.Cast(commandEncoder), in nativeSource, in nativeDest, (WGPUExtent3D*)copySize);
+        WGPUBrowserNative.CommandEncoderCopyTextureToTexture(WgpuCast.Cast(commandEncoder), in nativeSource,
+            in nativeDest, (WGPUExtent3D*)copySize);
     }
 
-    public unsafe void CommandEncoderCopyTextureToTexture(CommandEncoder* commandEncoder, in ImageCopyTexture source, in ImageCopyTexture destination, in Extent3D copySize)
+    public unsafe void CommandEncoderCopyTextureToTexture(CommandEncoder* commandEncoder, in ImageCopyTexture source,
+        in ImageCopyTexture destination, in Extent3D copySize)
     {
         var s = source;
         var nativeSource = s.Cast();
         var dst = destination;
         var nativeDest = dst.Cast();
-        WGPUBrowserNative.CommandEncoderCopyTextureToTexture(WgpuCast.Cast(commandEncoder), in nativeSource, in nativeDest,
-            in WgpuCast.Cast(ref Unsafe.AsRef(in copySize)));
+        WGPUBrowserNative.CommandEncoderCopyTextureToTexture(WgpuCast.Cast(commandEncoder), in nativeSource,
+            in nativeDest,
+            in Unsafe.AsRef(in copySize).Cast());
     }
 
-    public unsafe CommandBuffer* CommandEncoderFinish(CommandEncoder* commandEncoder, CommandBufferDescriptor* descriptor)
+    public unsafe CommandBuffer* CommandEncoderFinish(CommandEncoder* commandEncoder,
+        CommandBufferDescriptor* descriptor)
     {
         WGPUCommandBufferDescriptor* nativeDescriptor = null;
-        WGPUCommandBufferDescriptor nativeDescriptorValue = default;
         if (descriptor != null)
         {
-            nativeDescriptorValue = (*descriptor).Cast();
+            var nativeDescriptorValue = (*descriptor).Cast();
             nativeDescriptor = &nativeDescriptorValue;
         }
+
         return WgpuCast.Cast(WGPUBrowserNative.CommandEncoderFinish(WgpuCast.Cast(commandEncoder), nativeDescriptor));
     }
 
-    public unsafe CommandBuffer* CommandEncoderFinish(CommandEncoder* commandEncoder, in CommandBufferDescriptor descriptor)
+    public unsafe CommandBuffer* CommandEncoderFinish(CommandEncoder* commandEncoder,
+        in CommandBufferDescriptor descriptor)
     {
         var d = descriptor;
         var nativeDescriptor = d.Cast();
-        return WgpuCast.Cast(WGPUBrowserNative.CommandEncoderFinish(WgpuCast.Cast(commandEncoder), in nativeDescriptor));
+        return WgpuCast.Cast(
+            WGPUBrowserNative.CommandEncoderFinish(WgpuCast.Cast(commandEncoder), in nativeDescriptor));
     }
 
     public unsafe void CommandEncoderInsertDebugMarker(CommandEncoder* commandEncoder, byte* markerLabel)
@@ -615,9 +767,11 @@ public partial class WGPUBrowser : IDisposable
         WGPUBrowserNative.CommandEncoderPushDebugGroup(WgpuCast.Cast(commandEncoder), groupLabel);
     }
 
-    public unsafe void CommandEncoderResolveQuerySet(CommandEncoder* commandEncoder, QuerySet* querySet, uint firstQuery, uint queryCount, Buffer* destination, ulong destinationOffset)
+    public unsafe void CommandEncoderResolveQuerySet(CommandEncoder* commandEncoder, QuerySet* querySet,
+        uint firstQuery, uint queryCount, Buffer* destination, ulong destinationOffset)
     {
-        WGPUBrowserNative.CommandEncoderResolveQuerySet(WgpuCast.Cast(commandEncoder), WgpuCast.Cast(querySet), firstQuery, queryCount, WgpuCast.Cast(destination), destinationOffset);
+        WGPUBrowserNative.CommandEncoderResolveQuerySet(WgpuCast.Cast(commandEncoder), WgpuCast.Cast(querySet),
+            firstQuery, queryCount, WgpuCast.Cast(destination), destinationOffset);
     }
 
     public unsafe void CommandEncoderSetLabel(CommandEncoder* commandEncoder, byte* label)
@@ -637,7 +791,8 @@ public partial class WGPUBrowser : IDisposable
 
     public unsafe void CommandEncoderWriteTimestamp(CommandEncoder* commandEncoder, QuerySet* querySet, uint queryIndex)
     {
-        WGPUBrowserNative.CommandEncoderWriteTimestamp(WgpuCast.Cast(commandEncoder), WgpuCast.Cast(querySet), queryIndex);
+        WGPUBrowserNative.CommandEncoderWriteTimestamp(WgpuCast.Cast(commandEncoder), WgpuCast.Cast(querySet),
+            queryIndex);
     }
 
     public unsafe void CommandEncoderReference(CommandEncoder* commandEncoder)
@@ -650,19 +805,25 @@ public partial class WGPUBrowser : IDisposable
         WGPUBrowserNative.CommandEncoderRelease(WgpuCast.Cast(commandEncoder));
     }
 
-    public unsafe void ComputePassEncoderBeginPipelineStatisticsQuery(ComputePassEncoder* computePassEncoder, QuerySet* querySet, uint queryIndex)
+    public unsafe void ComputePassEncoderBeginPipelineStatisticsQuery(ComputePassEncoder* computePassEncoder,
+        QuerySet* querySet, uint queryIndex)
     {
-        WGPUBrowserNative.ComputePassEncoderBeginPipelineStatisticsQuery(WgpuCast.Cast(computePassEncoder), WgpuCast.Cast(querySet), queryIndex);
+        WGPUBrowserNative.ComputePassEncoderBeginPipelineStatisticsQuery(WgpuCast.Cast(computePassEncoder),
+            WgpuCast.Cast(querySet), queryIndex);
     }
 
-    public unsafe void ComputePassEncoderDispatchWorkgroups(ComputePassEncoder* computePassEncoder, uint workgroupCountX, uint workgroupCountY, uint workgroupCountZ)
+    public unsafe void ComputePassEncoderDispatchWorkgroups(ComputePassEncoder* computePassEncoder,
+        uint workgroupCountX, uint workgroupCountY, uint workgroupCountZ)
     {
-        WGPUBrowserNative.ComputePassEncoderDispatchWorkgroups(WgpuCast.Cast(computePassEncoder), workgroupCountX, workgroupCountY, workgroupCountZ);
+        WGPUBrowserNative.ComputePassEncoderDispatchWorkgroups(WgpuCast.Cast(computePassEncoder), workgroupCountX,
+            workgroupCountY, workgroupCountZ);
     }
 
-    public unsafe void ComputePassEncoderDispatchWorkgroupsIndirect(ComputePassEncoder* computePassEncoder, Buffer* indirectBuffer, ulong indirectOffset)
+    public unsafe void ComputePassEncoderDispatchWorkgroupsIndirect(ComputePassEncoder* computePassEncoder,
+        Buffer* indirectBuffer, ulong indirectOffset)
     {
-        WGPUBrowserNative.ComputePassEncoderDispatchWorkgroupsIndirect(WgpuCast.Cast(computePassEncoder), WgpuCast.Cast(indirectBuffer), indirectOffset);
+        WGPUBrowserNative.ComputePassEncoderDispatchWorkgroupsIndirect(WgpuCast.Cast(computePassEncoder),
+            WgpuCast.Cast(indirectBuffer), indirectOffset);
     }
 
     public unsafe void ComputePassEncoderEnd(ComputePassEncoder* computePassEncoder)
@@ -710,14 +871,18 @@ public partial class WGPUBrowser : IDisposable
         WGPUBrowserNative.ComputePassEncoderPushDebugGroup(WgpuCast.Cast(computePassEncoder), groupLabel);
     }
 
-    public unsafe void ComputePassEncoderSetBindGroup(ComputePassEncoder* computePassEncoder, uint groupIndex, BindGroup* group, nuint dynamicOffsetCount, uint* dynamicOffsets)
+    public unsafe void ComputePassEncoderSetBindGroup(ComputePassEncoder* computePassEncoder, uint groupIndex,
+        BindGroup* group, nuint dynamicOffsetCount, uint* dynamicOffsets)
     {
-        WGPUBrowserNative.ComputePassEncoderSetBindGroup(WgpuCast.Cast(computePassEncoder), groupIndex, WgpuCast.Cast(group), dynamicOffsetCount, dynamicOffsets);
+        WGPUBrowserNative.ComputePassEncoderSetBindGroup(WgpuCast.Cast(computePassEncoder), groupIndex,
+            WgpuCast.Cast(group), dynamicOffsetCount, dynamicOffsets);
     }
 
-    public unsafe void ComputePassEncoderSetBindGroup(ComputePassEncoder* computePassEncoder, uint groupIndex, BindGroup* group, nuint dynamicOffsetCount, in uint dynamicOffsets)
+    public unsafe void ComputePassEncoderSetBindGroup(ComputePassEncoder* computePassEncoder, uint groupIndex,
+        BindGroup* group, nuint dynamicOffsetCount, in uint dynamicOffsets)
     {
-        WGPUBrowserNative.ComputePassEncoderSetBindGroup(WgpuCast.Cast(computePassEncoder), groupIndex, WgpuCast.Cast(group), dynamicOffsetCount, in dynamicOffsets);
+        WGPUBrowserNative.ComputePassEncoderSetBindGroup(WgpuCast.Cast(computePassEncoder), groupIndex,
+            WgpuCast.Cast(group), dynamicOffsetCount, in dynamicOffsets);
     }
 
     public unsafe void ComputePassEncoderSetLabel(ComputePassEncoder* computePassEncoder, byte* label)
@@ -752,7 +917,8 @@ public partial class WGPUBrowser : IDisposable
 
     public unsafe BindGroupLayout* ComputePipelineGetBindGroupLayout(ComputePipeline* computePipeline, uint groupIndex)
     {
-        return WgpuCast.Cast(WGPUBrowserNative.ComputePipelineGetBindGroupLayout(WgpuCast.Cast(computePipeline), groupIndex));
+        return WgpuCast.Cast(
+            WGPUBrowserNative.ComputePipelineGetBindGroupLayout(WgpuCast.Cast(computePipeline), groupIndex));
     }
 
     public unsafe void ComputePipelineSetLabel(ComputePipeline* computePipeline, byte* label)
@@ -783,12 +949,12 @@ public partial class WGPUBrowser : IDisposable
     public unsafe BindGroup* DeviceCreateBindGroup(Device* device, BindGroupDescriptor* descriptor)
     {
         WGPUBindGroupDescriptor* nativeDescriptor = null;
-        WGPUBindGroupDescriptor nativeDescriptorValue = default;
         if (descriptor != null)
         {
-            nativeDescriptorValue = (*descriptor).Cast();
+            var nativeDescriptorValue = (*descriptor).Cast();
             nativeDescriptor = &nativeDescriptorValue;
         }
+
         return WgpuCast.Cast(WGPUBrowserNative.DeviceCreateBindGroup(WgpuCast.Cast(device), nativeDescriptor));
     }
 
@@ -802,12 +968,12 @@ public partial class WGPUBrowser : IDisposable
     public unsafe BindGroupLayout* DeviceCreateBindGroupLayout(Device* device, BindGroupLayoutDescriptor* descriptor)
     {
         WGPUBindGroupLayoutDescriptor* nativeDescriptor = null;
-        WGPUBindGroupLayoutDescriptor nativeDescriptorValue = default;
         if (descriptor != null)
         {
-            nativeDescriptorValue = (*descriptor).Cast();
+            var nativeDescriptorValue = (*descriptor).Cast();
             nativeDescriptor = &nativeDescriptorValue;
         }
+
         return WgpuCast.Cast(WGPUBrowserNative.DeviceCreateBindGroupLayout(WgpuCast.Cast(device), nativeDescriptor));
     }
 
@@ -821,12 +987,12 @@ public partial class WGPUBrowser : IDisposable
     public unsafe Buffer* DeviceCreateBuffer(Device* device, BufferDescriptor* descriptor)
     {
         WGPUBufferDescriptor* nativeDescriptor = null;
-        WGPUBufferDescriptor nativeDescriptorValue = default;
         if (descriptor != null)
         {
-            nativeDescriptorValue = (*descriptor).Cast();
+            var nativeDescriptorValue = (*descriptor).Cast();
             nativeDescriptor = &nativeDescriptorValue;
         }
+
         return WgpuCast.Cast(WGPUBrowserNative.DeviceCreateBuffer(WgpuCast.Cast(device), nativeDescriptor));
     }
 
@@ -840,12 +1006,12 @@ public partial class WGPUBrowser : IDisposable
     public unsafe CommandEncoder* DeviceCreateCommandEncoder(Device* device, CommandEncoderDescriptor* descriptor)
     {
         WGPUCommandEncoderDescriptor* nativeDescriptor = null;
-        WGPUCommandEncoderDescriptor nativeDescriptorValue = default;
         if (descriptor != null)
         {
-            nativeDescriptorValue = (*descriptor).Cast();
+            var nativeDescriptorValue = (*descriptor).Cast();
             nativeDescriptor = &nativeDescriptorValue;
         }
+
         return WgpuCast.Cast(WGPUBrowserNative.DeviceCreateCommandEncoder(WgpuCast.Cast(device), nativeDescriptor));
     }
 
@@ -859,12 +1025,12 @@ public partial class WGPUBrowser : IDisposable
     public unsafe ComputePipeline* DeviceCreateComputePipeline(Device* device, ComputePipelineDescriptor* descriptor)
     {
         WGPUComputePipelineDescriptor* nativeDescriptor = null;
-        WGPUComputePipelineDescriptor nativeDescriptorValue = default;
         if (descriptor != null)
         {
-            nativeDescriptorValue = (*descriptor).Cast();
+            var nativeDescriptorValue = (*descriptor).Cast();
             nativeDescriptor = &nativeDescriptorValue;
         }
+
         return WgpuCast.Cast(WGPUBrowserNative.DeviceCreateComputePipeline(WgpuCast.Cast(device), nativeDescriptor));
     }
 
@@ -875,34 +1041,37 @@ public partial class WGPUBrowser : IDisposable
         return WgpuCast.Cast(WGPUBrowserNative.DeviceCreateComputePipeline(WgpuCast.Cast(device), in nativeDescriptor));
     }
 
-    public unsafe void DeviceCreateComputePipelineAsync(Device* device, ComputePipelineDescriptor* descriptor, nint callback, void* userdata)
+    public unsafe void DeviceCreateComputePipelineAsync(Device* device, ComputePipelineDescriptor* descriptor,
+        nint callback, void* userdata)
     {
         WGPUComputePipelineDescriptor* nativeDescriptor = null;
-        WGPUComputePipelineDescriptor nativeDescriptorValue = default;
         if (descriptor != null)
         {
-            nativeDescriptorValue = (*descriptor).Cast();
+            var nativeDescriptorValue = (*descriptor).Cast();
             nativeDescriptor = &nativeDescriptorValue;
         }
+
         WGPUBrowserNative.DeviceCreateComputePipelineAsync(WgpuCast.Cast(device), nativeDescriptor, callback, userdata);
     }
 
-    public unsafe void DeviceCreateComputePipelineAsync(Device* device, in ComputePipelineDescriptor descriptor, nint callback, void* userdata)
+    public unsafe void DeviceCreateComputePipelineAsync(Device* device, in ComputePipelineDescriptor descriptor,
+        nint callback, void* userdata)
     {
         var d = descriptor;
         var nativeDescriptor = d.Cast();
-        WGPUBrowserNative.DeviceCreateComputePipelineAsync(WgpuCast.Cast(device), in nativeDescriptor, callback, userdata);
+        WGPUBrowserNative.DeviceCreateComputePipelineAsync(WgpuCast.Cast(device), in nativeDescriptor, callback,
+            userdata);
     }
 
     public unsafe PipelineLayout* DeviceCreatePipelineLayout(Device* device, PipelineLayoutDescriptor* descriptor)
     {
         WGPUPipelineLayoutDescriptor* nativeDescriptor = null;
-        WGPUPipelineLayoutDescriptor nativeDescriptorValue = default;
         if (descriptor != null)
         {
-            nativeDescriptorValue = (*descriptor).Cast();
+            var nativeDescriptorValue = (*descriptor).Cast();
             nativeDescriptor = &nativeDescriptorValue;
         }
+
         return WgpuCast.Cast(WGPUBrowserNative.DeviceCreatePipelineLayout(WgpuCast.Cast(device), nativeDescriptor));
     }
 
@@ -916,12 +1085,12 @@ public partial class WGPUBrowser : IDisposable
     public unsafe QuerySet* DeviceCreateQuerySet(Device* device, QuerySetDescriptor* descriptor)
     {
         WGPUQuerySetDescriptor* nativeDescriptor = null;
-        WGPUQuerySetDescriptor nativeDescriptorValue = default;
         if (descriptor != null)
         {
-            nativeDescriptorValue = (*descriptor).Cast();
+            var nativeDescriptorValue = (*descriptor).Cast();
             nativeDescriptor = &nativeDescriptorValue;
         }
+
         return WgpuCast.Cast(WGPUBrowserNative.DeviceCreateQuerySet(WgpuCast.Cast(device), nativeDescriptor));
     }
 
@@ -932,34 +1101,38 @@ public partial class WGPUBrowser : IDisposable
         return WgpuCast.Cast(WGPUBrowserNative.DeviceCreateQuerySet(WgpuCast.Cast(device), in nativeDescriptor));
     }
 
-    public unsafe RenderBundleEncoder* DeviceCreateRenderBundleEncoder(Device* device, RenderBundleEncoderDescriptor* descriptor)
+    public unsafe RenderBundleEncoder* DeviceCreateRenderBundleEncoder(Device* device,
+        RenderBundleEncoderDescriptor* descriptor)
     {
         WGPURenderBundleEncoderDescriptor* nativeDescriptor = null;
-        WGPURenderBundleEncoderDescriptor nativeDescriptorValue = default;
         if (descriptor != null)
         {
-            nativeDescriptorValue = (*descriptor).Cast();
+            var nativeDescriptorValue = (*descriptor).Cast();
             nativeDescriptor = &nativeDescriptorValue;
         }
-        return WgpuCast.Cast(WGPUBrowserNative.DeviceCreateRenderBundleEncoder(WgpuCast.Cast(device), nativeDescriptor));
+
+        return WgpuCast.Cast(
+            WGPUBrowserNative.DeviceCreateRenderBundleEncoder(WgpuCast.Cast(device), nativeDescriptor));
     }
 
-    public unsafe RenderBundleEncoder* DeviceCreateRenderBundleEncoder(Device* device, in RenderBundleEncoderDescriptor descriptor)
+    public unsafe RenderBundleEncoder* DeviceCreateRenderBundleEncoder(Device* device,
+        in RenderBundleEncoderDescriptor descriptor)
     {
         var d = descriptor;
         var nativeDescriptor = d.Cast();
-        return WgpuCast.Cast(WGPUBrowserNative.DeviceCreateRenderBundleEncoder(WgpuCast.Cast(device), in nativeDescriptor));
+        return WgpuCast.Cast(
+            WGPUBrowserNative.DeviceCreateRenderBundleEncoder(WgpuCast.Cast(device), in nativeDescriptor));
     }
 
     public unsafe RenderPipeline* DeviceCreateRenderPipeline(Device* device, RenderPipelineDescriptor* descriptor)
     {
         WGPURenderPipelineDescriptor* nativeDescriptor = null;
-        WGPURenderPipelineDescriptor nativeDescriptorValue = default;
         if (descriptor != null)
         {
-            nativeDescriptorValue = (*descriptor).Cast();
+            var nativeDescriptorValue = (*descriptor).Cast();
             nativeDescriptor = &nativeDescriptorValue;
         }
+
         return WgpuCast.Cast(WGPUBrowserNative.DeviceCreateRenderPipeline(WgpuCast.Cast(device), nativeDescriptor));
     }
 
@@ -970,34 +1143,37 @@ public partial class WGPUBrowser : IDisposable
         return WgpuCast.Cast(WGPUBrowserNative.DeviceCreateRenderPipeline(WgpuCast.Cast(device), in nativeDescriptor));
     }
 
-    public unsafe void DeviceCreateRenderPipelineAsync(Device* device, RenderPipelineDescriptor* descriptor, nint callback, void* userdata)
+    public unsafe void DeviceCreateRenderPipelineAsync(Device* device, RenderPipelineDescriptor* descriptor,
+        nint callback, void* userdata)
     {
         WGPURenderPipelineDescriptor* nativeDescriptor = null;
-        WGPURenderPipelineDescriptor nativeDescriptorValue = default;
         if (descriptor != null)
         {
-            nativeDescriptorValue = (*descriptor).Cast();
+            var nativeDescriptorValue = (*descriptor).Cast();
             nativeDescriptor = &nativeDescriptorValue;
         }
+
         WGPUBrowserNative.DeviceCreateRenderPipelineAsync(WgpuCast.Cast(device), nativeDescriptor, callback, userdata);
     }
 
-    public unsafe void DeviceCreateRenderPipelineAsync(Device* device, in RenderPipelineDescriptor descriptor, nint callback, void* userdata)
+    public unsafe void DeviceCreateRenderPipelineAsync(Device* device, in RenderPipelineDescriptor descriptor,
+        nint callback, void* userdata)
     {
         var d = descriptor;
         var nativeDescriptor = d.Cast();
-        WGPUBrowserNative.DeviceCreateRenderPipelineAsync(WgpuCast.Cast(device), in nativeDescriptor, callback, userdata);
+        WGPUBrowserNative.DeviceCreateRenderPipelineAsync(WgpuCast.Cast(device), in nativeDescriptor, callback,
+            userdata);
     }
 
     public unsafe Sampler* DeviceCreateSampler(Device* device, SamplerDescriptor* descriptor)
     {
         WGPUSamplerDescriptor* nativeDescriptor = null;
-        WGPUSamplerDescriptor nativeDescriptorValue = default;
         if (descriptor != null)
         {
-            nativeDescriptorValue = (*descriptor).Cast();
+            var nativeDescriptorValue = (*descriptor).Cast();
             nativeDescriptor = &nativeDescriptorValue;
         }
+
         return WgpuCast.Cast(WGPUBrowserNative.DeviceCreateSampler(WgpuCast.Cast(device), nativeDescriptor));
     }
 
@@ -1011,12 +1187,12 @@ public partial class WGPUBrowser : IDisposable
     public unsafe ShaderModule* DeviceCreateShaderModule(Device* device, ShaderModuleDescriptor* descriptor)
     {
         WGPUShaderModuleDescriptor* nativeDescriptor = null;
-        WGPUShaderModuleDescriptor nativeDescriptorValue = default;
         if (descriptor != null)
         {
-            nativeDescriptorValue = (*descriptor).Cast();
+            var nativeDescriptorValue = (*descriptor).Cast();
             nativeDescriptor = &nativeDescriptorValue;
         }
+
         return WgpuCast.Cast(WGPUBrowserNative.DeviceCreateShaderModule(WgpuCast.Cast(device), nativeDescriptor));
     }
 
@@ -1030,12 +1206,12 @@ public partial class WGPUBrowser : IDisposable
     public unsafe Texture* DeviceCreateTexture(Device* device, TextureDescriptor* descriptor)
     {
         WGPUTextureDescriptor* nativeDescriptor = null;
-        WGPUTextureDescriptor nativeDescriptorValue = default;
         if (descriptor != null)
         {
-            nativeDescriptorValue = (*descriptor).Cast();
+            var nativeDescriptorValue = (*descriptor).Cast();
             nativeDescriptor = &nativeDescriptorValue;
         }
+
         return WgpuCast.Cast(WGPUBrowserNative.DeviceCreateTexture(WgpuCast.Cast(device), nativeDescriptor));
     }
 
@@ -1058,7 +1234,8 @@ public partial class WGPUBrowser : IDisposable
 
     public unsafe nuint DeviceEnumerateFeatures(Device* device, ref FeatureName features)
     {
-        return WGPUBrowserNative.DeviceEnumerateFeatures(WgpuCast.Cast(device), ref global::System.Runtime.CompilerServices.Unsafe.As<FeatureName, WGPUFeatureName>(ref features));
+        return WGPUBrowserNative.DeviceEnumerateFeatures(WgpuCast.Cast(device),
+            ref Unsafe.As<FeatureName, WGPUFeatureName>(ref features));
     }
 
     public unsafe bool DeviceGetLimits(Device* device, SupportedLimits* limits)
@@ -1130,12 +1307,12 @@ public partial class WGPUBrowser : IDisposable
     public unsafe Surface* InstanceCreateSurface(Instance* instance, SurfaceDescriptor* descriptor)
     {
         WGPUSurfaceDescriptor* nativeDescriptor = null;
-        WGPUSurfaceDescriptor nativeDescriptorValue = default;
         if (descriptor != null)
         {
-            nativeDescriptorValue = (*descriptor).Cast();
+            var nativeDescriptorValue = (*descriptor).Cast();
             nativeDescriptor = &nativeDescriptorValue;
         }
+
         return WgpuCast.Cast(WGPUBrowserNative.InstanceCreateSurface(WgpuCast.Cast(instance), nativeDescriptor));
     }
 
@@ -1155,12 +1332,12 @@ public partial class WGPUBrowser : IDisposable
         delegate* unmanaged[Cdecl]<RequestAdapterStatus, Adapter*, byte*, void*, void> callback, void* userdata)
     {
         WGPURequestAdapterOptions* nativeOptions = null;
-        WGPURequestAdapterOptions nativeOptionsValue = default;
         if (options != null)
         {
-            nativeOptionsValue = (*options).Cast();
+            var nativeOptionsValue = (*options).Cast();
             nativeOptions = &nativeOptionsValue;
         }
+
         WGPUBrowserNative.InstanceRequestAdapter(WgpuCast.Cast(instance), nativeOptions, (nint)callback, userdata);
     }
 
@@ -1285,88 +1462,132 @@ public partial class WGPUBrowser : IDisposable
         WGPUBrowserNative.QueueWriteBuffer(WgpuCast.Cast(queue), WgpuCast.Cast(buffer), bufferOffset, data, size);
     }
 
-    public unsafe void QueueWriteTexture(Queue* queue, ImageCopyTexture* destination, void* data, nuint dataSize, TextureDataLayout* dataLayout, Extent3D* writeSize)
+    public unsafe void QueueWriteTexture(Queue* queue, ImageCopyTexture* destination, void* data, nuint dataSize,
+        TextureDataLayout* dataLayout, Extent3D* writeSize)
     {
         WGPUImageCopyTexture* nativeDest = null;
-        WGPUImageCopyTexture nativeDestValue = default;
-        if (destination != null) { nativeDestValue = (*destination).Cast(); nativeDest = &nativeDestValue; }
-        WGPUTextureDataLayout* nativeLayout = null;
-        WGPUTextureDataLayout nativeLayoutValue = default;
-        if (dataLayout != null) { nativeLayoutValue = (*dataLayout).Cast(); nativeLayout = &nativeLayoutValue; }
-        WGPUBrowserNative.QueueWriteTexture(WgpuCast.Cast(queue), nativeDest, data, dataSize, nativeLayout, (WGPUExtent3D*)writeSize);
-    }
+        if (destination != null)
+        {
+            var nativeDestValue = (*destination).Cast();
+            nativeDest = &nativeDestValue;
+        }
 
-    public unsafe void QueueWriteTexture(Queue* queue, ImageCopyTexture* destination, void* data, nuint dataSize, TextureDataLayout* dataLayout, in Extent3D writeSize)
-    {
-        WGPUImageCopyTexture* nativeDest = null;
-        WGPUImageCopyTexture nativeDestValue = default;
-        if (destination != null) { nativeDestValue = (*destination).Cast(); nativeDest = &nativeDestValue; }
         WGPUTextureDataLayout* nativeLayout = null;
-        WGPUTextureDataLayout nativeLayoutValue = default;
-        if (dataLayout != null) { nativeLayoutValue = (*dataLayout).Cast(); nativeLayout = &nativeLayoutValue; }
+        if (dataLayout != null)
+        {
+            var nativeLayoutValue = (*dataLayout).Cast();
+            nativeLayout = &nativeLayoutValue;
+        }
+
         WGPUBrowserNative.QueueWriteTexture(WgpuCast.Cast(queue), nativeDest, data, dataSize, nativeLayout,
-            in WgpuCast.Cast(ref Unsafe.AsRef(in writeSize)));
+            (WGPUExtent3D*)writeSize);
     }
 
-    public unsafe void QueueWriteTexture(Queue* queue, ImageCopyTexture* destination, void* data, nuint dataSize, in TextureDataLayout dataLayout, Extent3D* writeSize)
+    public unsafe void QueueWriteTexture(Queue* queue, ImageCopyTexture* destination, void* data, nuint dataSize,
+        TextureDataLayout* dataLayout, in Extent3D writeSize)
     {
         WGPUImageCopyTexture* nativeDest = null;
-        WGPUImageCopyTexture nativeDestValue = default;
-        if (destination != null) { nativeDestValue = (*destination).Cast(); nativeDest = &nativeDestValue; }
-        var dl = dataLayout;
-        var nativeLayout = dl.Cast();
-        WGPUBrowserNative.QueueWriteTexture(WgpuCast.Cast(queue), nativeDest, data, dataSize, in nativeLayout, (WGPUExtent3D*)writeSize);
+        if (destination != null)
+        {
+            var nativeDestValue = (*destination).Cast();
+            nativeDest = &nativeDestValue;
+        }
+
+        WGPUTextureDataLayout* nativeLayout = null;
+        if (dataLayout != null)
+        {
+            var nativeLayoutValue = (*dataLayout).Cast();
+            nativeLayout = &nativeLayoutValue;
+        }
+
+        WGPUBrowserNative.QueueWriteTexture(WgpuCast.Cast(queue), nativeDest, data, dataSize, nativeLayout,
+            in Unsafe.AsRef(in writeSize).Cast());
     }
 
-    public unsafe void QueueWriteTexture(Queue* queue, ImageCopyTexture* destination, void* data, nuint dataSize, in TextureDataLayout dataLayout, in Extent3D writeSize)
+    public unsafe void QueueWriteTexture(Queue* queue, ImageCopyTexture* destination, void* data, nuint dataSize,
+        in TextureDataLayout dataLayout, Extent3D* writeSize)
     {
         WGPUImageCopyTexture* nativeDest = null;
-        WGPUImageCopyTexture nativeDestValue = default;
-        if (destination != null) { nativeDestValue = (*destination).Cast(); nativeDest = &nativeDestValue; }
+        if (destination != null)
+        {
+            var nativeDestValue = (*destination).Cast();
+            nativeDest = &nativeDestValue;
+        }
+
         var dl = dataLayout;
         var nativeLayout = dl.Cast();
         WGPUBrowserNative.QueueWriteTexture(WgpuCast.Cast(queue), nativeDest, data, dataSize, in nativeLayout,
-            in WgpuCast.Cast(ref Unsafe.AsRef(in writeSize)));
+            (WGPUExtent3D*)writeSize);
     }
 
-    public unsafe void QueueWriteTexture(Queue* queue, in ImageCopyTexture destination, void* data, nuint dataSize, TextureDataLayout* dataLayout, Extent3D* writeSize)
+    public unsafe void QueueWriteTexture(Queue* queue, ImageCopyTexture* destination, void* data, nuint dataSize,
+        in TextureDataLayout dataLayout, in Extent3D writeSize)
     {
-        var dst = destination;
-        var nativeDest = dst.Cast();
-        WGPUTextureDataLayout* nativeLayout = null;
-        WGPUTextureDataLayout nativeLayoutValue = default;
-        if (dataLayout != null) { nativeLayoutValue = (*dataLayout).Cast(); nativeLayout = &nativeLayoutValue; }
-        WGPUBrowserNative.QueueWriteTexture(WgpuCast.Cast(queue), in nativeDest, data, dataSize, nativeLayout, (WGPUExtent3D*)writeSize);
-    }
+        WGPUImageCopyTexture* nativeDest = null;
+        if (destination != null)
+        {
+            var nativeDestValue = (*destination).Cast();
+            nativeDest = &nativeDestValue;
+        }
 
-    public unsafe void QueueWriteTexture(Queue* queue, in ImageCopyTexture destination, void* data, nuint dataSize, TextureDataLayout* dataLayout, in Extent3D writeSize)
-    {
-        var dst = destination;
-        var nativeDest = dst.Cast();
-        WGPUTextureDataLayout* nativeLayout = null;
-        WGPUTextureDataLayout nativeLayoutValue = default;
-        if (dataLayout != null) { nativeLayoutValue = (*dataLayout).Cast(); nativeLayout = &nativeLayoutValue; }
-        WGPUBrowserNative.QueueWriteTexture(WgpuCast.Cast(queue), in nativeDest, data, dataSize, nativeLayout,
-            in WgpuCast.Cast(ref Unsafe.AsRef(in writeSize)));
-    }
-
-    public unsafe void QueueWriteTexture(Queue* queue, in ImageCopyTexture destination, void* data, nuint dataSize, in TextureDataLayout dataLayout, Extent3D* writeSize)
-    {
-        var dst = destination;
-        var nativeDest = dst.Cast();
         var dl = dataLayout;
         var nativeLayout = dl.Cast();
-        WGPUBrowserNative.QueueWriteTexture(WgpuCast.Cast(queue), in nativeDest, data, dataSize, in nativeLayout, (WGPUExtent3D*)writeSize);
+        WGPUBrowserNative.QueueWriteTexture(WgpuCast.Cast(queue), nativeDest, data, dataSize, in nativeLayout,
+            in Unsafe.AsRef(in writeSize).Cast());
     }
 
-    public unsafe void QueueWriteTexture(Queue* queue, in ImageCopyTexture destination, void* data, nuint dataSize, in TextureDataLayout dataLayout, in Extent3D writeSize)
+    public unsafe void QueueWriteTexture(Queue* queue, in ImageCopyTexture destination, void* data, nuint dataSize,
+        TextureDataLayout* dataLayout, Extent3D* writeSize)
+    {
+        var dst = destination;
+        var nativeDest = dst.Cast();
+        WGPUTextureDataLayout* nativeLayout = null;
+        if (dataLayout != null)
+        {
+            var nativeLayoutValue = (*dataLayout).Cast();
+            nativeLayout = &nativeLayoutValue;
+        }
+
+        WGPUBrowserNative.QueueWriteTexture(WgpuCast.Cast(queue), in nativeDest, data, dataSize, nativeLayout,
+            (WGPUExtent3D*)writeSize);
+    }
+
+    public unsafe void QueueWriteTexture(Queue* queue, in ImageCopyTexture destination, void* data, nuint dataSize,
+        TextureDataLayout* dataLayout, in Extent3D writeSize)
+    {
+        var dst = destination;
+        var nativeDest = dst.Cast();
+        WGPUTextureDataLayout* nativeLayout = null;
+        if (dataLayout != null)
+        {
+            var nativeLayoutValue = (*dataLayout).Cast();
+            nativeLayout = &nativeLayoutValue;
+        }
+
+        WGPUBrowserNative.QueueWriteTexture(WgpuCast.Cast(queue), in nativeDest, data, dataSize, nativeLayout,
+            in Unsafe.AsRef(in writeSize).Cast());
+    }
+
+    public unsafe void QueueWriteTexture(Queue* queue, in ImageCopyTexture destination, void* data, nuint dataSize,
+        in TextureDataLayout dataLayout, Extent3D* writeSize)
     {
         var dst = destination;
         var nativeDest = dst.Cast();
         var dl = dataLayout;
         var nativeLayout = dl.Cast();
         WGPUBrowserNative.QueueWriteTexture(WgpuCast.Cast(queue), in nativeDest, data, dataSize, in nativeLayout,
-            in WgpuCast.Cast(ref Unsafe.AsRef(in writeSize)));
+            (WGPUExtent3D*)writeSize);
+    }
+
+    public unsafe void QueueWriteTexture(Queue* queue, in ImageCopyTexture destination, void* data, nuint dataSize,
+        in TextureDataLayout dataLayout, in Extent3D writeSize)
+    {
+        var dst = destination;
+        var nativeDest = dst.Cast();
+        var dl = dataLayout;
+        var nativeLayout = dl.Cast();
+        WGPUBrowserNative.QueueWriteTexture(WgpuCast.Cast(queue), in nativeDest, data, dataSize, in nativeLayout,
+            in Unsafe.AsRef(in writeSize).Cast());
     }
 
     public unsafe void QueueReference(Queue* queue)
@@ -1404,43 +1625,55 @@ public partial class WGPUBrowser : IDisposable
         WGPUBrowserNative.RenderBundleRelease(WgpuCast.Cast(renderBundle));
     }
 
-    public unsafe void RenderBundleEncoderDraw(RenderBundleEncoder* renderBundleEncoder, uint vertexCount, uint instanceCount, uint firstVertex, uint firstInstance)
+    public unsafe void RenderBundleEncoderDraw(RenderBundleEncoder* renderBundleEncoder, uint vertexCount,
+        uint instanceCount, uint firstVertex, uint firstInstance)
     {
-        WGPUBrowserNative.RenderBundleEncoderDraw(WgpuCast.Cast(renderBundleEncoder), vertexCount, instanceCount, firstVertex, firstInstance);
+        WGPUBrowserNative.RenderBundleEncoderDraw(WgpuCast.Cast(renderBundleEncoder), vertexCount, instanceCount,
+            firstVertex, firstInstance);
     }
 
-    public unsafe void RenderBundleEncoderDrawIndexed(RenderBundleEncoder* renderBundleEncoder, uint indexCount, uint instanceCount, uint firstIndex, int baseVertex, uint firstInstance)
+    public unsafe void RenderBundleEncoderDrawIndexed(RenderBundleEncoder* renderBundleEncoder, uint indexCount,
+        uint instanceCount, uint firstIndex, int baseVertex, uint firstInstance)
     {
-        WGPUBrowserNative.RenderBundleEncoderDrawIndexed(WgpuCast.Cast(renderBundleEncoder), indexCount, instanceCount, firstIndex, baseVertex, firstInstance);
+        WGPUBrowserNative.RenderBundleEncoderDrawIndexed(WgpuCast.Cast(renderBundleEncoder), indexCount, instanceCount,
+            firstIndex, baseVertex, firstInstance);
     }
 
-    public unsafe void RenderBundleEncoderDrawIndexedIndirect(RenderBundleEncoder* renderBundleEncoder, Buffer* indirectBuffer, ulong indirectOffset)
+    public unsafe void RenderBundleEncoderDrawIndexedIndirect(RenderBundleEncoder* renderBundleEncoder,
+        Buffer* indirectBuffer, ulong indirectOffset)
     {
-        WGPUBrowserNative.RenderBundleEncoderDrawIndexedIndirect(WgpuCast.Cast(renderBundleEncoder), WgpuCast.Cast(indirectBuffer), indirectOffset);
+        WGPUBrowserNative.RenderBundleEncoderDrawIndexedIndirect(WgpuCast.Cast(renderBundleEncoder),
+            WgpuCast.Cast(indirectBuffer), indirectOffset);
     }
 
-    public unsafe void RenderBundleEncoderDrawIndirect(RenderBundleEncoder* renderBundleEncoder, Buffer* indirectBuffer, ulong indirectOffset)
+    public unsafe void RenderBundleEncoderDrawIndirect(RenderBundleEncoder* renderBundleEncoder, Buffer* indirectBuffer,
+        ulong indirectOffset)
     {
-        WGPUBrowserNative.RenderBundleEncoderDrawIndirect(WgpuCast.Cast(renderBundleEncoder), WgpuCast.Cast(indirectBuffer), indirectOffset);
+        WGPUBrowserNative.RenderBundleEncoderDrawIndirect(WgpuCast.Cast(renderBundleEncoder),
+            WgpuCast.Cast(indirectBuffer), indirectOffset);
     }
 
-    public unsafe RenderBundle* RenderBundleEncoderFinish(RenderBundleEncoder* renderBundleEncoder, RenderBundleDescriptor* descriptor)
+    public unsafe RenderBundle* RenderBundleEncoderFinish(RenderBundleEncoder* renderBundleEncoder,
+        RenderBundleDescriptor* descriptor)
     {
         WGPURenderBundleDescriptor* nativeDescriptor = null;
-        WGPURenderBundleDescriptor nativeDescriptorValue = default;
         if (descriptor != null)
         {
-            nativeDescriptorValue = (*descriptor).Cast();
+            var nativeDescriptorValue = (*descriptor).Cast();
             nativeDescriptor = &nativeDescriptorValue;
         }
-        return WgpuCast.Cast(WGPUBrowserNative.RenderBundleEncoderFinish(WgpuCast.Cast(renderBundleEncoder), nativeDescriptor));
+
+        return WgpuCast.Cast(
+            WGPUBrowserNative.RenderBundleEncoderFinish(WgpuCast.Cast(renderBundleEncoder), nativeDescriptor));
     }
 
-    public unsafe RenderBundle* RenderBundleEncoderFinish(RenderBundleEncoder* renderBundleEncoder, in RenderBundleDescriptor descriptor)
+    public unsafe RenderBundle* RenderBundleEncoderFinish(RenderBundleEncoder* renderBundleEncoder,
+        in RenderBundleDescriptor descriptor)
     {
         var d = descriptor;
         var nativeDescriptor = d.Cast();
-        return WgpuCast.Cast(WGPUBrowserNative.RenderBundleEncoderFinish(WgpuCast.Cast(renderBundleEncoder), in nativeDescriptor));
+        return WgpuCast.Cast(
+            WGPUBrowserNative.RenderBundleEncoderFinish(WgpuCast.Cast(renderBundleEncoder), in nativeDescriptor));
     }
 
     public unsafe void RenderBundleEncoderInsertDebugMarker(RenderBundleEncoder* renderBundleEncoder, byte* markerLabel)
@@ -1448,12 +1681,14 @@ public partial class WGPUBrowser : IDisposable
         WGPUBrowserNative.RenderBundleEncoderInsertDebugMarker(WgpuCast.Cast(renderBundleEncoder), markerLabel);
     }
 
-    public unsafe void RenderBundleEncoderInsertDebugMarker(RenderBundleEncoder* renderBundleEncoder, in byte markerLabel)
+    public unsafe void RenderBundleEncoderInsertDebugMarker(RenderBundleEncoder* renderBundleEncoder,
+        in byte markerLabel)
     {
         WGPUBrowserNative.RenderBundleEncoderInsertDebugMarker(WgpuCast.Cast(renderBundleEncoder), in markerLabel);
     }
 
-    public unsafe void RenderBundleEncoderInsertDebugMarker(RenderBundleEncoder* renderBundleEncoder, string markerLabel)
+    public unsafe void RenderBundleEncoderInsertDebugMarker(RenderBundleEncoder* renderBundleEncoder,
+        string markerLabel)
     {
         WGPUBrowserNative.RenderBundleEncoderInsertDebugMarker(WgpuCast.Cast(renderBundleEncoder), markerLabel);
     }
@@ -1478,19 +1713,25 @@ public partial class WGPUBrowser : IDisposable
         WGPUBrowserNative.RenderBundleEncoderPushDebugGroup(WgpuCast.Cast(renderBundleEncoder), groupLabel);
     }
 
-    public unsafe void RenderBundleEncoderSetBindGroup(RenderBundleEncoder* renderBundleEncoder, uint groupIndex, BindGroup* group, nuint dynamicOffsetCount, uint* dynamicOffsets)
+    public unsafe void RenderBundleEncoderSetBindGroup(RenderBundleEncoder* renderBundleEncoder, uint groupIndex,
+        BindGroup* group, nuint dynamicOffsetCount, uint* dynamicOffsets)
     {
-        WGPUBrowserNative.RenderBundleEncoderSetBindGroup(WgpuCast.Cast(renderBundleEncoder), groupIndex, WgpuCast.Cast(group), dynamicOffsetCount, dynamicOffsets);
+        WGPUBrowserNative.RenderBundleEncoderSetBindGroup(WgpuCast.Cast(renderBundleEncoder), groupIndex,
+            WgpuCast.Cast(group), dynamicOffsetCount, dynamicOffsets);
     }
 
-    public unsafe void RenderBundleEncoderSetBindGroup(RenderBundleEncoder* renderBundleEncoder, uint groupIndex, BindGroup* group, nuint dynamicOffsetCount, in uint dynamicOffsets)
+    public unsafe void RenderBundleEncoderSetBindGroup(RenderBundleEncoder* renderBundleEncoder, uint groupIndex,
+        BindGroup* group, nuint dynamicOffsetCount, in uint dynamicOffsets)
     {
-        WGPUBrowserNative.RenderBundleEncoderSetBindGroup(WgpuCast.Cast(renderBundleEncoder), groupIndex, WgpuCast.Cast(group), dynamicOffsetCount, in dynamicOffsets);
+        WGPUBrowserNative.RenderBundleEncoderSetBindGroup(WgpuCast.Cast(renderBundleEncoder), groupIndex,
+            WgpuCast.Cast(group), dynamicOffsetCount, in dynamicOffsets);
     }
 
-    public unsafe void RenderBundleEncoderSetIndexBuffer(RenderBundleEncoder* renderBundleEncoder, Buffer* buffer, IndexFormat format, ulong offset, ulong size)
+    public unsafe void RenderBundleEncoderSetIndexBuffer(RenderBundleEncoder* renderBundleEncoder, Buffer* buffer,
+        IndexFormat format, ulong offset, ulong size)
     {
-        WGPUBrowserNative.RenderBundleEncoderSetIndexBuffer(WgpuCast.Cast(renderBundleEncoder), WgpuCast.Cast(buffer), format.Cast(), offset, size);
+        WGPUBrowserNative.RenderBundleEncoderSetIndexBuffer(WgpuCast.Cast(renderBundleEncoder), WgpuCast.Cast(buffer),
+            format.Cast(), offset, size);
     }
 
     public unsafe void RenderBundleEncoderSetLabel(RenderBundleEncoder* renderBundleEncoder, byte* label)
@@ -1508,14 +1749,17 @@ public partial class WGPUBrowser : IDisposable
         WGPUBrowserNative.RenderBundleEncoderSetLabel(WgpuCast.Cast(renderBundleEncoder), label);
     }
 
-    public unsafe void RenderBundleEncoderSetPipeline(RenderBundleEncoder* renderBundleEncoder, RenderPipeline* pipeline)
+    public unsafe void RenderBundleEncoderSetPipeline(RenderBundleEncoder* renderBundleEncoder,
+        RenderPipeline* pipeline)
     {
         WGPUBrowserNative.RenderBundleEncoderSetPipeline(WgpuCast.Cast(renderBundleEncoder), WgpuCast.Cast(pipeline));
     }
 
-    public unsafe void RenderBundleEncoderSetVertexBuffer(RenderBundleEncoder* renderBundleEncoder, uint slot, Buffer* buffer, ulong offset, ulong size)
+    public unsafe void RenderBundleEncoderSetVertexBuffer(RenderBundleEncoder* renderBundleEncoder, uint slot,
+        Buffer* buffer, ulong offset, ulong size)
     {
-        WGPUBrowserNative.RenderBundleEncoderSetVertexBuffer(WgpuCast.Cast(renderBundleEncoder), slot, WgpuCast.Cast(buffer), offset, size);
+        WGPUBrowserNative.RenderBundleEncoderSetVertexBuffer(WgpuCast.Cast(renderBundleEncoder), slot,
+            WgpuCast.Cast(buffer), offset, size);
     }
 
     public unsafe void RenderBundleEncoderReference(RenderBundleEncoder* renderBundleEncoder)
@@ -1533,29 +1777,39 @@ public partial class WGPUBrowser : IDisposable
         WGPUBrowserNative.RenderPassEncoderBeginOcclusionQuery(WgpuCast.Cast(renderPassEncoder), queryIndex);
     }
 
-    public unsafe void RenderPassEncoderBeginPipelineStatisticsQuery(RenderPassEncoder* renderPassEncoder, QuerySet* querySet, uint queryIndex)
+    public unsafe void RenderPassEncoderBeginPipelineStatisticsQuery(RenderPassEncoder* renderPassEncoder,
+        QuerySet* querySet, uint queryIndex)
     {
-        WGPUBrowserNative.RenderPassEncoderBeginPipelineStatisticsQuery(WgpuCast.Cast(renderPassEncoder), WgpuCast.Cast(querySet), queryIndex);
+        WGPUBrowserNative.RenderPassEncoderBeginPipelineStatisticsQuery(WgpuCast.Cast(renderPassEncoder),
+            WgpuCast.Cast(querySet), queryIndex);
     }
 
-    public unsafe void RenderPassEncoderDraw(RenderPassEncoder* renderPassEncoder, uint vertexCount, uint instanceCount, uint firstVertex, uint firstInstance)
+    public unsafe void RenderPassEncoderDraw(RenderPassEncoder* renderPassEncoder, uint vertexCount, uint instanceCount,
+        uint firstVertex, uint firstInstance)
     {
-        WGPUBrowserNative.RenderPassEncoderDraw(WgpuCast.Cast(renderPassEncoder), vertexCount, instanceCount, firstVertex, firstInstance);
+        WGPUBrowserNative.RenderPassEncoderDraw(WgpuCast.Cast(renderPassEncoder), vertexCount, instanceCount,
+            firstVertex, firstInstance);
     }
 
-    public unsafe void RenderPassEncoderDrawIndexed(RenderPassEncoder* renderPassEncoder, uint indexCount, uint instanceCount, uint firstIndex, int baseVertex, uint firstInstance)
+    public unsafe void RenderPassEncoderDrawIndexed(RenderPassEncoder* renderPassEncoder, uint indexCount,
+        uint instanceCount, uint firstIndex, int baseVertex, uint firstInstance)
     {
-        WGPUBrowserNative.RenderPassEncoderDrawIndexed(WgpuCast.Cast(renderPassEncoder), indexCount, instanceCount, firstIndex, baseVertex, firstInstance);
+        WGPUBrowserNative.RenderPassEncoderDrawIndexed(WgpuCast.Cast(renderPassEncoder), indexCount, instanceCount,
+            firstIndex, baseVertex, firstInstance);
     }
 
-    public unsafe void RenderPassEncoderDrawIndexedIndirect(RenderPassEncoder* renderPassEncoder, Buffer* indirectBuffer, ulong indirectOffset)
+    public unsafe void RenderPassEncoderDrawIndexedIndirect(RenderPassEncoder* renderPassEncoder,
+        Buffer* indirectBuffer, ulong indirectOffset)
     {
-        WGPUBrowserNative.RenderPassEncoderDrawIndexedIndirect(WgpuCast.Cast(renderPassEncoder), WgpuCast.Cast(indirectBuffer), indirectOffset);
+        WGPUBrowserNative.RenderPassEncoderDrawIndexedIndirect(WgpuCast.Cast(renderPassEncoder),
+            WgpuCast.Cast(indirectBuffer), indirectOffset);
     }
 
-    public unsafe void RenderPassEncoderDrawIndirect(RenderPassEncoder* renderPassEncoder, Buffer* indirectBuffer, ulong indirectOffset)
+    public unsafe void RenderPassEncoderDrawIndirect(RenderPassEncoder* renderPassEncoder, Buffer* indirectBuffer,
+        ulong indirectOffset)
     {
-        WGPUBrowserNative.RenderPassEncoderDrawIndirect(WgpuCast.Cast(renderPassEncoder), WgpuCast.Cast(indirectBuffer), indirectOffset);
+        WGPUBrowserNative.RenderPassEncoderDrawIndirect(WgpuCast.Cast(renderPassEncoder), WgpuCast.Cast(indirectBuffer),
+            indirectOffset);
     }
 
     public unsafe void RenderPassEncoderEnd(RenderPassEncoder* renderPassEncoder)
@@ -1573,13 +1827,15 @@ public partial class WGPUBrowser : IDisposable
         WGPUBrowserNative.RenderPassEncoderEndPipelineStatisticsQuery(WgpuCast.Cast(renderPassEncoder));
     }
 
-    public unsafe void RenderPassEncoderExecuteBundles(RenderPassEncoder* renderPassEncoder, nuint bundleCount, RenderBundle** bundles)
+    public unsafe void RenderPassEncoderExecuteBundles(RenderPassEncoder* renderPassEncoder, nuint bundleCount,
+        RenderBundle** bundles)
     {
         WGPUBrowserNative.RenderPassEncoderExecuteBundles(WgpuCast.Cast(renderPassEncoder), bundleCount,
             (WGPURenderBundle**)bundles);
     }
 
-    public unsafe void RenderPassEncoderExecuteBundles(RenderPassEncoder* renderPassEncoder, nuint bundleCount, ref RenderBundle* bundles)
+    public unsafe void RenderPassEncoderExecuteBundles(RenderPassEncoder* renderPassEncoder, nuint bundleCount,
+        ref RenderBundle* bundles)
     {
         fixed (RenderBundle** bundlesPtr = &bundles)
         {
@@ -1623,14 +1879,18 @@ public partial class WGPUBrowser : IDisposable
         WGPUBrowserNative.RenderPassEncoderPushDebugGroup(WgpuCast.Cast(renderPassEncoder), groupLabel);
     }
 
-    public unsafe void RenderPassEncoderSetBindGroup(RenderPassEncoder* renderPassEncoder, uint groupIndex, BindGroup* group, nuint dynamicOffsetCount, uint* dynamicOffsets)
+    public unsafe void RenderPassEncoderSetBindGroup(RenderPassEncoder* renderPassEncoder, uint groupIndex,
+        BindGroup* group, nuint dynamicOffsetCount, uint* dynamicOffsets)
     {
-        WGPUBrowserNative.RenderPassEncoderSetBindGroup(WgpuCast.Cast(renderPassEncoder), groupIndex, WgpuCast.Cast(group), dynamicOffsetCount, dynamicOffsets);
+        WGPUBrowserNative.RenderPassEncoderSetBindGroup(WgpuCast.Cast(renderPassEncoder), groupIndex,
+            WgpuCast.Cast(group), dynamicOffsetCount, dynamicOffsets);
     }
 
-    public unsafe void RenderPassEncoderSetBindGroup(RenderPassEncoder* renderPassEncoder, uint groupIndex, BindGroup* group, nuint dynamicOffsetCount, in uint dynamicOffsets)
+    public unsafe void RenderPassEncoderSetBindGroup(RenderPassEncoder* renderPassEncoder, uint groupIndex,
+        BindGroup* group, nuint dynamicOffsetCount, in uint dynamicOffsets)
     {
-        WGPUBrowserNative.RenderPassEncoderSetBindGroup(WgpuCast.Cast(renderPassEncoder), groupIndex, WgpuCast.Cast(group), dynamicOffsetCount, in dynamicOffsets);
+        WGPUBrowserNative.RenderPassEncoderSetBindGroup(WgpuCast.Cast(renderPassEncoder), groupIndex,
+            WgpuCast.Cast(group), dynamicOffsetCount, in dynamicOffsets);
     }
 
     public unsafe void RenderPassEncoderSetBlendConstant(RenderPassEncoder* renderPassEncoder, Color* color)
@@ -1640,12 +1900,15 @@ public partial class WGPUBrowser : IDisposable
 
     public unsafe void RenderPassEncoderSetBlendConstant(RenderPassEncoder* renderPassEncoder, in Color color)
     {
-        WGPUBrowserNative.RenderPassEncoderSetBlendConstant(WgpuCast.Cast(renderPassEncoder), in WgpuCast.Cast(ref global::System.Runtime.CompilerServices.Unsafe.AsRef(in color)));
+        WGPUBrowserNative.RenderPassEncoderSetBlendConstant(WgpuCast.Cast(renderPassEncoder),
+            in Unsafe.AsRef(in color).Cast());
     }
 
-    public unsafe void RenderPassEncoderSetIndexBuffer(RenderPassEncoder* renderPassEncoder, Buffer* buffer, IndexFormat format, ulong offset, ulong size)
+    public unsafe void RenderPassEncoderSetIndexBuffer(RenderPassEncoder* renderPassEncoder, Buffer* buffer,
+        IndexFormat format, ulong offset, ulong size)
     {
-        WGPUBrowserNative.RenderPassEncoderSetIndexBuffer(WgpuCast.Cast(renderPassEncoder), WgpuCast.Cast(buffer), format.Cast(), offset, size);
+        WGPUBrowserNative.RenderPassEncoderSetIndexBuffer(WgpuCast.Cast(renderPassEncoder), WgpuCast.Cast(buffer),
+            format.Cast(), offset, size);
     }
 
     public unsafe void RenderPassEncoderSetLabel(RenderPassEncoder* renderPassEncoder, byte* label)
@@ -1668,7 +1931,8 @@ public partial class WGPUBrowser : IDisposable
         WGPUBrowserNative.RenderPassEncoderSetPipeline(WgpuCast.Cast(renderPassEncoder), WgpuCast.Cast(pipeline));
     }
 
-    public unsafe void RenderPassEncoderSetScissorRect(RenderPassEncoder* renderPassEncoder, uint x, uint y, uint width, uint height)
+    public unsafe void RenderPassEncoderSetScissorRect(RenderPassEncoder* renderPassEncoder, uint x, uint y, uint width,
+        uint height)
     {
         WGPUBrowserNative.RenderPassEncoderSetScissorRect(WgpuCast.Cast(renderPassEncoder), x, y, width, height);
     }
@@ -1678,14 +1942,18 @@ public partial class WGPUBrowser : IDisposable
         WGPUBrowserNative.RenderPassEncoderSetStencilReference(WgpuCast.Cast(renderPassEncoder), reference);
     }
 
-    public unsafe void RenderPassEncoderSetVertexBuffer(RenderPassEncoder* renderPassEncoder, uint slot, Buffer* buffer, ulong offset, ulong size)
+    public unsafe void RenderPassEncoderSetVertexBuffer(RenderPassEncoder* renderPassEncoder, uint slot, Buffer* buffer,
+        ulong offset, ulong size)
     {
-        WGPUBrowserNative.RenderPassEncoderSetVertexBuffer(WgpuCast.Cast(renderPassEncoder), slot, WgpuCast.Cast(buffer), offset, size);
+        WGPUBrowserNative.RenderPassEncoderSetVertexBuffer(WgpuCast.Cast(renderPassEncoder), slot,
+            WgpuCast.Cast(buffer), offset, size);
     }
 
-    public unsafe void RenderPassEncoderSetViewport(RenderPassEncoder* renderPassEncoder, float x, float y, float width, float height, float minDepth, float maxDepth)
+    public unsafe void RenderPassEncoderSetViewport(RenderPassEncoder* renderPassEncoder, float x, float y, float width,
+        float height, float minDepth, float maxDepth)
     {
-        WGPUBrowserNative.RenderPassEncoderSetViewport(WgpuCast.Cast(renderPassEncoder), x, y, width, height, minDepth, maxDepth);
+        WGPUBrowserNative.RenderPassEncoderSetViewport(WgpuCast.Cast(renderPassEncoder), x, y, width, height, minDepth,
+            maxDepth);
     }
 
     public unsafe void RenderPassEncoderReference(RenderPassEncoder* renderPassEncoder)
@@ -1700,7 +1968,8 @@ public partial class WGPUBrowser : IDisposable
 
     public unsafe BindGroupLayout* RenderPipelineGetBindGroupLayout(RenderPipeline* renderPipeline, uint groupIndex)
     {
-        return WgpuCast.Cast(WGPUBrowserNative.RenderPipelineGetBindGroupLayout(WgpuCast.Cast(renderPipeline), groupIndex));
+        return WgpuCast.Cast(
+            WGPUBrowserNative.RenderPipelineGetBindGroupLayout(WgpuCast.Cast(renderPipeline), groupIndex));
     }
 
     public unsafe void RenderPipelineSetLabel(RenderPipeline* renderPipeline, byte* label)
@@ -1753,7 +2022,8 @@ public partial class WGPUBrowser : IDisposable
         WGPUBrowserNative.SamplerRelease(WgpuCast.Cast(sampler));
     }
 
-    public unsafe void ShaderModuleGetCompilationInfo(ShaderModule* shaderModule, PfnCompilationInfoCallback callback, void* userdata)
+    public unsafe void ShaderModuleGetCompilationInfo(ShaderModule* shaderModule, PfnCompilationInfoCallback callback,
+        void* userdata)
     {
         WGPUBrowserNative.ShaderModuleGetCompilationInfo(WgpuCast.Cast(shaderModule), callback, userdata);
     }
@@ -1811,12 +2081,12 @@ public partial class WGPUBrowser : IDisposable
     public unsafe TextureView* TextureCreateView(Texture* texture, TextureViewDescriptor* descriptor)
     {
         WGPUTextureViewDescriptor* nativeDescriptor = null;
-        WGPUTextureViewDescriptor nativeDescriptorValue = default;
         if (descriptor != null)
         {
-            nativeDescriptorValue = (*descriptor).Cast();
+            var nativeDescriptorValue = (*descriptor).Cast();
             nativeDescriptor = &nativeDescriptorValue;
         }
+
         return WgpuCast.Cast(WGPUBrowserNative.TextureCreateView(WgpuCast.Cast(texture), nativeDescriptor));
     }
 
@@ -1932,7 +2202,8 @@ public partial class WGPUBrowser : IDisposable
         WGPUBrowserNative.SwapChainRelease((WGPUSwapChain*)swapChain);
     }
 
-    public unsafe Dawn.SwapChain* DeviceCreateSwapChain(Device* device, Surface* surface, Dawn.SwapChainDescriptor descriptor)
+    public unsafe Dawn.SwapChain* DeviceCreateSwapChain(Device* device, Surface* surface,
+        Dawn.SwapChainDescriptor descriptor)
     {
         var nativeDescriptor = new WGPUSwapChainDescriptor
         {
@@ -1944,7 +2215,8 @@ public partial class WGPUBrowser : IDisposable
             Height = descriptor.Height,
             PresentMode = descriptor.PresentMode.Cast(),
         };
-        return (Dawn.SwapChain*)WGPUBrowserNative.DeviceCreateSwapChain(WgpuCast.Cast(device), WgpuCast.Cast(surface), in nativeDescriptor);
+        return (Dawn.SwapChain*)WGPUBrowserNative.DeviceCreateSwapChain(WgpuCast.Cast(device), WgpuCast.Cast(surface),
+            in nativeDescriptor);
     }
 
     public void Dispose()

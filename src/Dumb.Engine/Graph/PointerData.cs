@@ -4,9 +4,9 @@ namespace Dumb.Engine.Graph;
 
 internal readonly record struct PointerData(ulong Value)
 {
-    private static readonly byte IndexBits = IntPtr.Size == 4 ? (byte)20 : (byte)40;
-    private static readonly byte EpochBits = IntPtr.Size == 4 ? (byte)8 : (byte)16;
-    private static readonly byte StorageIdBits = IntPtr.Size == 4 ? (byte)4 : (byte)8;
+    private const byte IndexBits = 32;
+    private const byte EpochBits = 16;
+    private const byte StorageIdBits = 16;
 
     private static readonly ulong IndexMask = (1UL << IndexBits) - 1;
     private static readonly byte EpochOffset = IndexBits;
@@ -14,11 +14,11 @@ internal readonly record struct PointerData(ulong Value)
     private static readonly byte StorageIdOffset = (byte)(EpochOffset + EpochBits);
     private static readonly ulong StorageIdMask = ((1UL << StorageIdBits) - 1) << StorageIdOffset;
 
-    public static PointerData New(nuint index, ushort epoch, byte storageId)
+    public static PointerData New(nuint index, ushort epoch, ushort storageId)
     {
-        Debug.Assert((index >> IndexBits) == 0);
+        Debug.Assert(index >> IndexBits == 0);
         return new PointerData(
-            (ulong)index
+            index
             + ((ulong)epoch << EpochOffset)
             + ((ulong)storageId << StorageIdOffset));
     }
@@ -27,10 +27,7 @@ internal readonly record struct PointerData(ulong Value)
 
     public ushort Epoch => (ushort)((Value & EpochMask) >> EpochOffset);
 
-    public byte StorageId => (byte)((Value & StorageIdMask) >> StorageIdOffset);
+    public ushort StorageId => (ushort)((Value & StorageIdMask) >> StorageIdOffset);
 
-    public PointerData WithEpoch(ushort epoch)
-    {
-        return new PointerData((Value & ~EpochMask) + ((ulong)epoch << EpochOffset));
-    }
+    public PointerData WithEpoch(ushort epoch) => new((Value & ~EpochMask) + ((ulong)epoch << EpochOffset));
 }

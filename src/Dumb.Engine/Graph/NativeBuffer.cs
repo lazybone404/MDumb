@@ -2,11 +2,12 @@ using System.Runtime.InteropServices;
 
 namespace Dumb.Engine.Graph;
 
-internal unsafe sealed class NativeBuffer<T> : IDisposable
+internal sealed unsafe class NativeBuffer<T> : IDisposable
     where T : unmanaged
 {
     private T* _items;
     private nuint _capacity;
+    private bool _disposed;
 
     public NativeBuffer(nuint capacity = 0)
     {
@@ -21,7 +22,7 @@ internal unsafe sealed class NativeBuffer<T> : IDisposable
 
     public nuint Capacity => _capacity;
 
-    public bool IsDisposed => _items == null && _capacity != 0;
+    public bool IsDisposed => _disposed;
 
     public ref T this[nuint index] => ref _items[index];
 
@@ -68,11 +69,7 @@ internal unsafe sealed class NativeBuffer<T> : IDisposable
             return;
         }
 
-        var next = _capacity == 0 ? (nuint)4 : _capacity * 2;
-        while (next < capacity)
-        {
-            next *= 2;
-        }
+        var next = GetNextCapacity(capacity);
 
         _items = (T*)NativeMemory.Realloc(_items, next * (nuint)sizeof(T));
         _capacity = next;
@@ -84,5 +81,17 @@ internal unsafe sealed class NativeBuffer<T> : IDisposable
         _items = null;
         _capacity = 0;
         Length = 0;
+        _disposed = true;
+    }
+
+    private nuint GetNextCapacity(nuint capacity)
+    {
+        var next = _capacity == 0 ? (nuint)4 : _capacity * 2;
+        while (next < capacity)
+        {
+            next *= 2;
+        }
+
+        return next;
     }
 }
