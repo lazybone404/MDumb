@@ -1,0 +1,40 @@
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background: #17191f;
+  color: #f4f2ea;
+  font-family: Segoe UI, system-ui, sans-serif;
+}
+
+main {
+  width: min(920px, calc(100% - 32px));
+  margin: 40px auto;
+}
+
+h1 {
+  margin: 0 0 8px;
+  font-size: 28px;
+  font-weight: 650;
+}
+
+p {
+  margin: 0 0 24px;
+  color: #b9c0c9;
+}
+
+canvas {
+  display: block;
+  width: 640px;
+  max-width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  background: #101217;
+  border: 1px solid #3d4655;
+}
+
+pre {
+  margin-top: 16px;
+  white-space: pre-wrap;
+  color: #9fd4ff;
+}
