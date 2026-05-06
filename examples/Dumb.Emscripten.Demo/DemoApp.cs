@@ -1,8 +1,8 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using Shit.Emscripten;
+using Dumb.Emscripten;
 
-namespace Shit.Emscripten.Demo;
+namespace Dumb.Emscripten.Demo;
 
 public class DemoApp
 {

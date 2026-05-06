@@ -4,8 +4,14 @@
     <LangVersion>latest</LangVersion>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <IsPackable>true</IsPackable>
-    <PackageId>Shit.Engine</PackageId>
+    <PackageId>Dumb.Graphics</PackageId>
   </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Dumb.Engine\Dumb.Engine.csproj" />
+    <ProjectReference Include="..\Dumb.Emscripten\Dumb.Emscripten.csproj" />
+  </ItemGroup>
 
 </Project>

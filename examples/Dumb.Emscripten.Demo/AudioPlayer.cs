@@ -1,8 +1,8 @@
 using System.Runtime.InteropServices;
-using Shit.Emscripten;
+using Dumb.Emscripten;
 using Silk.NET.OpenAL;
 
-namespace Shit.Emscripten.Demo;
+namespace Dumb.Emscripten.Demo;
 
 public unsafe class AudioPlayer : IDisposable
 {

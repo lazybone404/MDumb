@@ -1,12 +1,12 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
-using Shit.Emscripten;
+using Dumb.Emscripten;
 using Silk.NET.WebGPU;
 using Buffer = Silk.NET.WebGPU.Buffer;
 using Dawn = Silk.NET.WebGPU.Extensions.Dawn;
 
-namespace Shit.Emscripten.Demo;
+namespace Dumb.Emscripten.Demo;
 
 [StructLayout(LayoutKind.Sequential)]
 struct FractalUniforms

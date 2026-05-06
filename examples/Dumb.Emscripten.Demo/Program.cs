@@ -1,13 +1,13 @@
-using Shit.Emscripten;
-using Shit.Emscripten.Demo;
+using Dumb.Emscripten;
+using Dumb.Emscripten.Demo;
 
 const string canvasSelector = "#canvas";
 const int width = 640;
 const int height = 360;
 
-Console.WriteLine("Shit.Emscripten interactive demo starting.");
+Console.WriteLine("Dumb.Emscripten interactive demo starting.");
 
-Emscripten.ConsoleLog("=== Shit.Emscripten Interactive Demo ===");
+Emscripten.ConsoleLog("=== Dumb.Emscripten Interactive Demo ===");
 Emscripten.SetCanvasElementSize(canvasSelector, width, height);
 
 if (Emscripten.TryGetElementCSSSize(canvasSelector, out var cssW, out var cssH))

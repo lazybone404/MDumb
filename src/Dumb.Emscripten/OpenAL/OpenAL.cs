@@ -1,4 +1,4 @@
-namespace Shit.Emscripten;
+namespace Dumb.Emscripten;
 
 using System.Numerics;
 using System.Text;

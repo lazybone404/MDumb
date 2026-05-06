@@ -13,15 +13,15 @@ public sealed class WgpuSourceGenerator : IIncrementalGenerator
     private static readonly object NativeDependencyLock = new();
     private static int s_nativeDependenciesLoaded;
 
-    private const string EmbeddedHeaderResourceName = "Shit.Emscripten.WGPUGenerator.webgpu.h";
-    private const string EmbeddedSilkHeaderResourceName = "Shit.Emscripten.WGPUGenerator.webgpu-silk.h";
+    private const string EmbeddedHeaderResourceName = "Dumb.Emscripten.WGPUGenerator.webgpu.h";
+    private const string EmbeddedSilkHeaderResourceName = "Dumb.Emscripten.WGPUGenerator.webgpu-silk.h";
     private const int RTLD_NOW = 2;
 
     private static readonly DiagnosticDescriptor MissingHeader = new(
         id: "SWGPU001",
         title: "Embedded WebGPU header missing",
         messageFormat: "The embedded WebGPU header resource '{0}' was not found in the generator assembly",
-        category: "Shit.Emscripten.WGPUGenerator",
+        category: "Dumb.Emscripten.WGPUGenerator",
         DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
@@ -29,7 +29,7 @@ public sealed class WgpuSourceGenerator : IIncrementalGenerator
         id: "SWGPU003",
         title: "WebGPU binding generation failed",
         messageFormat: "{0}",
-        category: "Shit.Emscripten.WGPUGenerator",
+        category: "Dumb.Emscripten.WGPUGenerator",
         DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
@@ -43,7 +43,7 @@ public sealed class WgpuSourceGenerator : IIncrementalGenerator
         if (assemblyName.Name != "ClangSharp.Interop")
             return null;
         using var stream = Assembly.GetExecutingAssembly()
-            .GetManifestResourceStream("Shit.Emscripten.WGPUGenerator.ClangSharp.Interop.dll");
+            .GetManifestResourceStream("Dumb.Emscripten.WGPUGenerator.ClangSharp.Interop.dll");
         if (stream == null)
             return null;
         var bytes = new byte[stream.Length];
@@ -210,12 +210,12 @@ public sealed class WgpuSourceGenerator : IIncrementalGenerator
     {
         var directory = Path.Combine(
             Path.GetTempPath(),
-            "Shit.Emscripten.WGPUGenerator",
+            "Dumb.Emscripten.WGPUGenerator",
             Process.GetCurrentProcess().Id.ToString(System.Globalization.CultureInfo.InvariantCulture));
         Directory.CreateDirectory(directory);
 
-        ExtractNativeDependency($"Shit.Emscripten.WGPUGenerator.Native.libclang.{suffix}", Path.Combine(directory, $"libclang{ext}"));
-        ExtractNativeDependency($"Shit.Emscripten.WGPUGenerator.Native.libClangSharp.{suffix}", Path.Combine(directory, $"libClangSharp{ext}"));
+        ExtractNativeDependency($"Dumb.Emscripten.WGPUGenerator.Native.libclang.{suffix}", Path.Combine(directory, $"libclang{ext}"));
+        ExtractNativeDependency($"Dumb.Emscripten.WGPUGenerator.Native.libClangSharp.{suffix}", Path.Combine(directory, $"libClangSharp{ext}"));
 
         return directory;
     }

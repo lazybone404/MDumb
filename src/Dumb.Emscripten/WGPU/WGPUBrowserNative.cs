@@ -1,4 +1,4 @@
-namespace Shit.Emscripten;
+namespace Dumb.Emscripten;
 
 using System.Runtime.InteropServices;
 using Dumb.Emscripten.WGPU;

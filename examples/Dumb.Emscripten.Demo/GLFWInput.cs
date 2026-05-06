@@ -1,9 +1,9 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using Shit.Emscripten;
+using Dumb.Emscripten;
 using Silk.NET.GLFW;
 
-namespace Shit.Emscripten.Demo;
+namespace Dumb.Emscripten.Demo;
 
 public struct InputState
 {
