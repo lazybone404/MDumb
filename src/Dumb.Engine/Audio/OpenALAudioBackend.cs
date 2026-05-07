@@ -57,7 +57,15 @@ public sealed unsafe class OpenALAudioBackend : IAudioBackend, IDisposable
     public void BufferData(AudioBuffer buffer, AudioSampleFormat format, void* data, int size, int sampleRate)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        _audioApi.BufferData(buffer.Id, ToSilk(format), data, size, sampleRate);
+        var bufferFormat = format switch
+        {
+            AudioSampleFormat.Mono8 => BufferFormat.Mono8,
+            AudioSampleFormat.Mono16 => BufferFormat.Mono16,
+            AudioSampleFormat.Stereo8 => BufferFormat.Stereo8,
+            AudioSampleFormat.Stereo16 => BufferFormat.Stereo16,
+            _ => throw new ArgumentOutOfRangeException(nameof(format), format, null)
+        };
+        _audioApi.BufferData(buffer.Id, bufferFormat, data, size, sampleRate);
     }
 
     public AudioSource CreateSource()
@@ -135,13 +143,4 @@ public sealed unsafe class OpenALAudioBackend : IAudioBackend, IDisposable
             _device = null;
         }
     }
-
-    private static BufferFormat ToSilk(AudioSampleFormat format) => format switch
-    {
-        AudioSampleFormat.Mono8 => BufferFormat.Mono8,
-        AudioSampleFormat.Mono16 => BufferFormat.Mono16,
-        AudioSampleFormat.Stereo8 => BufferFormat.Stereo8,
-        AudioSampleFormat.Stereo16 => BufferFormat.Stereo16,
-        _ => throw new ArgumentOutOfRangeException(nameof(format), format, null)
-    };
 }
