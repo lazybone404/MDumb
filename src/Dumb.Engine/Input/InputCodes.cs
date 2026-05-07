@@ -1,0 +1,85 @@
+namespace Dumb.Engine.Input;
+
+public enum KeyCode
+{
+    Unknown = -1,
+    Space = 32,
+    Number0 = 48,
+    Number1 = 49,
+    Number2 = 50,
+    Number3 = 51,
+    Number4 = 52,
+    Number5 = 53,
+    Number6 = 54,
+    Number7 = 55,
+    Number8 = 56,
+    Number9 = 57,
+    A = 65,
+    B = 66,
+    C = 67,
+    D = 68,
+    E = 69,
+    F = 70,
+    G = 71,
+    H = 72,
+    I = 73,
+    J = 74,
+    K = 75,
+    L = 76,
+    M = 77,
+    N = 78,
+    O = 79,
+    P = 80,
+    Q = 81,
+    R = 82,
+    S = 83,
+    T = 84,
+    U = 85,
+    V = 86,
+    W = 87,
+    X = 88,
+    Y = 89,
+    Z = 90,
+    Escape = 256,
+    Enter = 257,
+    Tab = 258,
+    Backspace = 259,
+    Insert = 260,
+    Delete = 261,
+    Right = 262,
+    Left = 263,
+    Down = 264,
+    Up = 265,
+    LeftShift = 340,
+    LeftControl = 341,
+    LeftAlt = 342,
+    RightShift = 344,
+    RightControl = 345,
+    RightAlt = 346
+}
+
+public enum MouseButton
+{
+    Left = 0,
+    Right = 1,
+    Middle = 2,
+    Button4 = 3,
+    Button5 = 4,
+    Button6 = 5,
+    Button7 = 6,
+    Button8 = 7
+}
+
+public enum GamepadButton
+{
+    South = 0,
+    East = 1,
+    West = 2,
+    North = 3,
+    LeftShoulder = 4,
+    RightShoulder = 5,
+    Back = 6,
+    Start = 7,
+    LeftStick = 8,
+    RightStick = 9
+}

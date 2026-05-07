@@ -42,6 +42,27 @@ public static unsafe class GLFW
         GLFWNative.DestroyWindow(window);
     }
 
+    public static bool WindowShouldClose(WindowHandle* window)
+    {
+        return GLFWNative.WindowShouldClose(window) == Bool.True;
+    }
+
+    public static void GetFramebufferSize(WindowHandle* window, out int width, out int height)
+    {
+        int w = 0, h = 0;
+        GLFWNative.GetFramebufferSize(window, &w, &h);
+        width = w;
+        height = h;
+    }
+
+    public static void GetCursorPos(WindowHandle* window, out double x, out double y)
+    {
+        double xpos = 0, ypos = 0;
+        GLFWNative.GetCursorPos(window, &xpos, &ypos);
+        x = xpos;
+        y = ypos;
+    }
+
     public static void PollEvents()
     {
         GLFWNative.PollEvents();

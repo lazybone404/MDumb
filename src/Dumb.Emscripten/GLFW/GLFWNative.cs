@@ -28,6 +28,18 @@ public static unsafe partial class GLFWNative
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     public static partial void DestroyWindow(WindowHandle* window);
 
+    [LibraryImport(LibraryName, EntryPoint = "glfwWindowShouldClose")]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    public static partial Bool WindowShouldClose(WindowHandle* window);
+
+    [LibraryImport(LibraryName, EntryPoint = "glfwGetFramebufferSize")]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    public static partial void GetFramebufferSize(WindowHandle* window, int* width, int* height);
+
+    [LibraryImport(LibraryName, EntryPoint = "glfwGetCursorPos")]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    public static partial void GetCursorPos(WindowHandle* window, double* xpos, double* ypos);
+
     [LibraryImport(LibraryName, EntryPoint = "glfwPollEvents")]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     public static partial void PollEvents();
