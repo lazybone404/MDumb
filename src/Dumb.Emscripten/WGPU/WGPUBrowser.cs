@@ -2197,6 +2197,11 @@ public partial class WGPUBrowser : IDisposable
         return WgpuCast.Cast(WGPUBrowserNative.SwapChainGetCurrentTextureView((WGPUSwapChain*)swapChain));
     }
 
+    public unsafe void SwapChainPresent(Dawn.SwapChain* swapChain)
+    {
+        WGPUBrowserNative.SwapChainPresent((WGPUSwapChain*)swapChain);
+    }
+
     public unsafe void SwapChainRelease(Dawn.SwapChain* swapChain)
     {
         WGPUBrowserNative.SwapChainRelease((WGPUSwapChain*)swapChain);

@@ -13,7 +13,6 @@
     <WasmBuildNative>true</WasmBuildNative>
     <WasmNativeWorkload>true</WasmNativeWorkload>
     <WasmEnableThreads>false</WasmEnableThreads>
-    <WasmAllowUndefinedSymbols>true</WasmAllowUndefinedSymbols>
     <WasmCachePath Condition="'$(OS)' == 'Windows_NT'">$(SystemDrive)\wasm-cache-$(MSBuildProjectName)</WasmCachePath>
     <EmccExtraLDFlags>-sUSE_WEBGPU=1 -sALLOW_MEMORY_GROWTH -sTOTAL_MEMORY=67108864</EmccExtraLDFlags>
   </PropertyGroup>

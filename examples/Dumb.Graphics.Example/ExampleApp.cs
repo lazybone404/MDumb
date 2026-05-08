@@ -1,25 +1,24 @@
 using System.Diagnostics;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Sia;
 using Silk.NET.WebGPU;
-#if !BROWSER
+#if BROWSER
+using System.Text;
+using Dumb.Emscripten;
+using Dawn = Silk.NET.WebGPU.Extensions.Dawn;
+#else
 using Dumb.Engine.Window;
 #endif
 
 namespace Dumb.Graphics.Example;
 
 [StructLayout(LayoutKind.Sequential)]
-internal struct ExampleVertex
+internal struct ExampleVertex(float x, float y, float r, float g, float b)
 {
-    public Vector2 Position;
-    public Vector3 Color;
-
-    public ExampleVertex(float x, float y, float r, float g, float b)
-    {
-        Position = new Vector2(x, y);
-        Color = new Vector3(r, g, b);
-    }
+    public Vector2 Position = new(x, y);
+    public Vector3 Color = new(r, g, b);
 }
 
 [StructLayout(LayoutKind.Sequential)]
@@ -159,9 +158,16 @@ fn cs_main(@builtin(global_invocation_id) id: vec3u) {
 """;
 
     private readonly GraphicsContext _graphics = new();
-#if !BROWSER
+#if BROWSER
+    private WGPUBrowser _wgpu = null!;
+    private unsafe Surface* _surface;
+    private unsafe Dawn.SwapChain* _swapChain;
+    private TextureFormat _surfaceFormat;
+    private uint _surfaceWidth;
+    private uint _surfaceHeight;
+#else
     private readonly GlfwWindow _window = new(NativeWidth, NativeHeight, "Dumb.Graphics native WebGPU example");
-    private readonly WebGPU _wgpu = WebGPU.GetApi();
+    private readonly WebGPU _wgpu = null!;
     private unsafe Surface* _surface;
     private TextureFormat _surfaceFormat;
     private uint _surfaceWidth;
@@ -179,25 +185,22 @@ fn cs_main(@builtin(global_invocation_id) id: vec3u) {
     private Entity _texturePipeline;
     private Entity _textureBindGroup;
     private RenderTexture _renderTarget;
-    private RenderTexture _browserTarget;
     private bool _disposed;
 
-    public async Task RunAsync()
-    {
-        await InitializeAsync();
 #if BROWSER
-        CreateSceneResources(ColorFormat, createBrowserTarget: true);
-        RenderFrame(1.0f);
-        Console.WriteLine("Dumb.Graphics browser WebGPU canvas example started.");
-#else
-        CreateSurface();
-        ConfigureSurface();
-        CreateSceneResources(_surfaceFormat, createBrowserTarget: false);
-        RunNativeLoop();
-#endif
-    }
+    private static GCHandle s_browserHandle;
 
-    private Task InitializeAsync()
+    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
+    private static unsafe int BrowserAnimationFrame(double timeMs, void* userData)
+    {
+        var app = (GraphicsExampleApp)GCHandle.FromIntPtr((nint)userData).Target!;
+        app.RenderFrame((float)(timeMs / 1000.0));
+        app._graphics.Tick();
+        return 1;
+    }
+#endif
+
+    public async Task RunAsync()
     {
         RequestAdapterOptions adapterOptions = new()
         {
@@ -215,10 +218,36 @@ fn cs_main(@builtin(global_invocation_id) id: vec3u) {
             DeviceLostUserdata = null
         };
 
-        return _graphics.InitializeAsync(adapterOptions, deviceDescriptor);
+        _wgpu = _graphics.NativeApi;
+#if BROWSER
+        _graphics.CreateWgpuInstance();
+        CreateBrowserSurface();
+        unsafe { adapterOptions.CompatibleSurface = (Surface*)_surface; }
+        await _graphics.InitializeAsync(adapterOptions, deviceDescriptor);
+        CreateBrowserSwapChain();
+        CreateSceneResources(_surfaceFormat);
+
+        s_browserHandle = GCHandle.Alloc(this);
+        Console.WriteLine("Dumb.Graphics browser WebGPU canvas example started.");
+
+        unsafe
+        {
+            Emscripten.Emscripten.RequestAnimationFrameLoop(
+                (delegate* unmanaged[Cdecl]<double, void*, int>)&BrowserAnimationFrame,
+                (void*)GCHandle.ToIntPtr(s_browserHandle));
+        }
+
+        await new TaskCompletionSource().Task;
+#else
+        await _graphics.InitializeAsync(adapterOptions, deviceDescriptor);
+        CreateSurface();
+        ConfigureSurface();
+        CreateSceneResources(_surfaceFormat);
+        RunNativeLoop();
+#endif
     }
 
-    private unsafe void CreateSceneResources(TextureFormat presentFormat, bool createBrowserTarget)
+    private unsafe void CreateSceneResources(TextureFormat presentFormat)
     {
         var uniforms = new ExampleUniforms
         {
@@ -233,8 +262,6 @@ fn cs_main(@builtin(global_invocation_id) id: vec3u) {
         var sampler = Samplers.LinearClamp(_graphics);
 
         _renderTarget = Textures.RenderTarget(_graphics, OffscreenWidth, OffscreenHeight, ColorFormat);
-        if (createBrowserTarget)
-            _browserTarget = Textures.RenderTarget(_graphics, OffscreenWidth, OffscreenHeight, presentFormat);
 
         var computeShader = Shaders.Wgsl(_graphics, ComputeShader);
         var triangleShader = Shaders.Wgsl(_graphics, TriangleShader);
@@ -368,6 +395,54 @@ fn cs_main(@builtin(global_invocation_id) id: vec3u) {
     }
 #endif
 
+#if BROWSER
+    private unsafe void CreateBrowserSurface()
+    {
+        var selectorBytes = Encoding.UTF8.GetBytes("#canvas\0");
+        var selectorHandle = GCHandle.Alloc(selectorBytes, GCHandleType.Pinned);
+
+        var canvasDesc = new SurfaceDescriptorFromCanvasHTMLSelector
+        {
+            Chain = new ChainedStruct
+            {
+                Next = null,
+                SType = SType.SurfaceDescriptorFromCanvasHtmlSelector
+            },
+            Selector = (byte*)selectorHandle.AddrOfPinnedObject()
+        };
+
+        var surfaceDesc = new SurfaceDescriptor
+        {
+            NextInChain = (ChainedStruct*)&canvasDesc,
+            Label = null
+        };
+
+        _surface = _wgpu.InstanceCreateSurface((Instance*)_graphics.NativeInstanceHandle, surfaceDesc);
+        selectorHandle.Free();
+
+        if (_surface == null)
+            throw new InvalidOperationException("Failed to create WebGPU surface from canvas.");
+
+        _surfaceWidth = NativeWidth;
+        _surfaceHeight = NativeHeight;
+    }
+
+    private unsafe void CreateBrowserSwapChain()
+    {
+        _surfaceFormat = _wgpu.SurfaceGetPreferredFormat(_surface, (Adapter*)_graphics.NativeAdapterHandle);
+
+        var desc = new Dawn.SwapChainDescriptor
+        {
+            Usage = TextureUsage.RenderAttachment,
+            Format = _surfaceFormat,
+            Width = _surfaceWidth,
+            Height = _surfaceHeight,
+            PresentMode = PresentMode.Fifo
+        };
+        _swapChain = _wgpu.DeviceCreateSwapChain((Device*)_graphics.NativeDeviceHandle, _surface, desc);
+    }
+#endif
+
     private unsafe void RenderFrame(float time)
     {
         var uniforms = new ExampleUniforms
@@ -378,7 +453,12 @@ fn cs_main(@builtin(global_invocation_id) id: vec3u) {
         Buffers.Write(_graphics, _uniformBuffer, uniforms);
 
 #if BROWSER
-        RecordAndSubmit(_browserTarget.View, _browserTarget.Width, _browserTarget.Height);
+        var swapChainView = _wgpu.SwapChainGetCurrentTextureView(_swapChain);
+        if (swapChainView == null)
+            return;
+        var targetView = Textures.WrapNativeTextureView(_graphics, (nint)swapChainView);
+        RecordAndSubmit(targetView, _surfaceWidth, _surfaceHeight);
+        Textures.ReleaseView(_graphics, targetView);
 #else
         var surfaceTexture = new SurfaceTexture();
         _wgpu.SurfaceGetCurrentTexture(_surface, &surfaceTexture);
@@ -482,7 +562,18 @@ fn cs_main(@builtin(global_invocation_id) id: vec3u) {
             return;
 
         _disposed = true;
-#if !BROWSER
+#if BROWSER
+        if (_swapChain != null)
+        {
+            _wgpu.SwapChainRelease(_swapChain);
+            _swapChain = null;
+        }
+        if (_surface != null)
+        {
+            _wgpu.SurfaceRelease(_surface);
+            _surface = null;
+        }
+#else
         if (_surface != null)
         {
             _wgpu.SurfaceUnconfigure(_surface);

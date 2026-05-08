@@ -616,6 +616,8 @@ public static partial class WGPUBrowserNative
     public static extern unsafe WGPUSwapChain* DeviceCreateSwapChain(WGPUDevice* device, WGPUSurface* surface, in WGPUSwapChainDescriptor descriptor);
     [DllImport(LibraryName, EntryPoint = "wgpuSwapChainGetCurrentTextureView")]
     public static extern unsafe WGPUTextureView* SwapChainGetCurrentTextureView(WGPUSwapChain* swapChain);
+    [DllImport(LibraryName, EntryPoint = "wgpuSwapChainPresent")]
+    public static extern unsafe void SwapChainPresent(WGPUSwapChain* swapChain);
     [DllImport(LibraryName, EntryPoint = "wgpuSwapChainRelease")]
     public static extern unsafe void SwapChainRelease(WGPUSwapChain* swapChain);
 }

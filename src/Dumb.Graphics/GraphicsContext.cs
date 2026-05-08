@@ -36,7 +36,9 @@ public class GraphicsContext : IDisposable
     internal readonly ICommandBackend Command;
 
 #if BROWSER
-    readonly WGPUBrowser _wgpu;
+    internal readonly WGPUBrowser _wgpu;
+#else
+    internal readonly WebGPU _wgpu;
 #endif
 
     bool _disposed;
@@ -59,11 +61,17 @@ public class GraphicsContext : IDisposable
         Device = new BrowserDeviceBackend(_wgpu);
         Command = new BrowserCommandBackend(_wgpu);
 #else
-        var wgpu = global::Silk.NET.WebGPU.WebGPU.GetApi();
-        Device = new NativeDeviceBackend(wgpu);
-        Command = new NativeCommandBackend(wgpu);
+        _wgpu = global::Silk.NET.WebGPU.WebGPU.GetApi();
+        Device = new NativeDeviceBackend(_wgpu);
+        Command = new NativeCommandBackend(_wgpu);
 #endif
     }
+
+#if BROWSER
+    public WGPUBrowser NativeApi => _wgpu;
+#else
+    public WebGPU NativeApi => _wgpu;
+#endif
 
     public nint NativeInstanceHandle => NativeInstance;
 
@@ -81,7 +89,8 @@ public class GraphicsContext : IDisposable
 
     async Task InitializeInternal(RequestAdapterOptions options, DeviceDescriptor descriptor)
     {
-        NativeInstance = CreateWgpuInstance();
+        if (NativeInstance == 0)
+            NativeInstance = CreateWgpuInstance();
 
         var adapter = await RequestAdapterAsync(NativeInstance, options).ConfigureAwait(false);
         NativeAdapter = adapter;
