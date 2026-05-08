@@ -220,7 +220,6 @@ fn cs_main(@builtin(global_invocation_id) id: vec3u) {
 
         _wgpu = _graphics.NativeApi;
 #if BROWSER
-        _graphics.CreateWgpuInstance();
         CreateBrowserSurface();
         unsafe { adapterOptions.CompatibleSurface = (Surface*)_surface; }
         await _graphics.InitializeAsync(adapterOptions, deviceDescriptor);
