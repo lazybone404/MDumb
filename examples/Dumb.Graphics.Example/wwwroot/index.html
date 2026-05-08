@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dumb.Graphics Example</title>
+    <link rel="icon" href="data:," />
+    <link rel="preload" id="webassembly" />
+    <link rel="stylesheet" href="style.css" />
+    <script type="importmap"></script>
+    <script type="module" src="main#[.{fingerprint}].js"></script>
+</head>
+<body>
+    <main>
+        <header>
+            <p class="eyebrow">Dumb.Graphics</p>
+            <h1>Cross-platform GPU API smoke test</h1>
+        </header>
+
+        <section class="demo-shell">
+            <div class="target-preview" aria-hidden="true"></div>
+            <aside>
+                <h2>Run Log</h2>
+                <pre id="status">Loading .NET WebAssembly...</pre>
+            </aside>
+        </section>
+    </main>
+</body>
+</html>

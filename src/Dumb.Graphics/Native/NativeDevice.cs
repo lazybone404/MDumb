@@ -14,8 +14,7 @@ internal sealed unsafe class NativeDeviceBackend : IDeviceBackend
     public nint GetProcAddress(nint device, byte* procName) =>
         _wgpu.GetProcAddress((Device*)device, procName);
 
-    public void InstanceProcessEvents(nint instance) =>
-        _wgpu.InstanceProcessEvents((Instance*)instance);
+    public void InstanceProcessEvents(nint instance) { }
 
     public void InstanceRequestAdapter(nint instance, RequestAdapterOptions* options,
         delegate* unmanaged[Cdecl]<RequestAdapterStatus, nint, byte*, void*, void> callback, void* userdata)

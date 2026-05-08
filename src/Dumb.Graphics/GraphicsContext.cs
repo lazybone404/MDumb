@@ -1,8 +1,10 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Text;
+using Sia;
 using Silk.NET.WebGPU;
-using Dumb.Engine.Graph;
 #if BROWSER
+using Dumb.Emscripten;
 using Dumb.Graphics.Browser;
 #else
 using Dumb.Graphics.Native;
@@ -12,16 +14,18 @@ namespace Dumb.Graphics;
 
 public class GraphicsContext : IDisposable
 {
-    internal readonly Storage<BufferData> _buffers = new();
-    internal readonly Storage<TextureData> _textures = new();
-    internal readonly Storage<TextureViewData> _textureViews = new();
-    internal readonly Storage<SamplerData> _samplers = new();
-    internal readonly Storage<ShaderData> _shaders = new();
-    internal readonly Storage<BindGroupLayoutData> _bindGroupLayouts = new();
-    internal readonly Storage<BindGroupData> _bindGroups = new();
-    internal readonly Storage<PipelineLayoutData> _pipelineLayouts = new();
-    internal readonly Storage<RenderPipelineData> _renderPipelines = new();
-    internal readonly Storage<ComputePipelineData> _computePipelines = new();
+    internal readonly World _world = new();
+
+    internal readonly IEntityHost<HList<BufferData, EmptyHList>> _buffers;
+    internal readonly IEntityHost<HList<TextureData, EmptyHList>> _textures;
+    internal readonly IEntityHost<HList<TextureViewData, EmptyHList>> _textureViews;
+    internal readonly IEntityHost<HList<SamplerData, EmptyHList>> _samplers;
+    internal readonly IEntityHost<HList<ShaderData, EmptyHList>> _shaders;
+    internal readonly IEntityHost<HList<BindGroupLayoutData, EmptyHList>> _bindGroupLayouts;
+    internal readonly IEntityHost<HList<BindGroupData, EmptyHList>> _bindGroups;
+    internal readonly IEntityHost<HList<PipelineLayoutData, EmptyHList>> _pipelineLayouts;
+    internal readonly IEntityHost<HList<RenderPipelineData, EmptyHList>> _renderPipelines;
+    internal readonly IEntityHost<HList<ComputePipelineData, EmptyHList>> _computePipelines;
 
     internal nint NativeInstance;
     internal nint NativeAdapter;
@@ -35,8 +39,19 @@ public class GraphicsContext : IDisposable
 
     public GraphicsContext()
     {
+        _buffers = _world.AcquireHost<HList<BufferData, EmptyHList>, ArrayEntityHost<HList<BufferData, EmptyHList>>>();
+        _textures = _world.AcquireHost<HList<TextureData, EmptyHList>, ArrayEntityHost<HList<TextureData, EmptyHList>>>();
+        _textureViews = _world.AcquireHost<HList<TextureViewData, EmptyHList>, ArrayEntityHost<HList<TextureViewData, EmptyHList>>>();
+        _samplers = _world.AcquireHost<HList<SamplerData, EmptyHList>, ArrayEntityHost<HList<SamplerData, EmptyHList>>>();
+        _shaders = _world.AcquireHost<HList<ShaderData, EmptyHList>, ArrayEntityHost<HList<ShaderData, EmptyHList>>>();
+        _bindGroupLayouts = _world.AcquireHost<HList<BindGroupLayoutData, EmptyHList>, ArrayEntityHost<HList<BindGroupLayoutData, EmptyHList>>>();
+        _bindGroups = _world.AcquireHost<HList<BindGroupData, EmptyHList>, ArrayEntityHost<HList<BindGroupData, EmptyHList>>>();
+        _pipelineLayouts = _world.AcquireHost<HList<PipelineLayoutData, EmptyHList>, ArrayEntityHost<HList<PipelineLayoutData, EmptyHList>>>();
+        _renderPipelines = _world.AcquireHost<HList<RenderPipelineData, EmptyHList>, ArrayEntityHost<HList<RenderPipelineData, EmptyHList>>>();
+        _computePipelines = _world.AcquireHost<HList<ComputePipelineData, EmptyHList>, ArrayEntityHost<HList<ComputePipelineData, EmptyHList>>>();
+
 #if BROWSER
-        var wgpu = new Dumb.Emscripten.WGPUBrowser();
+        var wgpu = new WGPUBrowser();
         Device = new BrowserDeviceBackend(wgpu);
         Command = new BrowserCommandBackend(wgpu);
 #else
@@ -45,6 +60,14 @@ public class GraphicsContext : IDisposable
         Command = new NativeCommandBackend(wgpu);
 #endif
     }
+
+    public nint NativeInstanceHandle => NativeInstance;
+
+    public nint NativeAdapterHandle => NativeAdapter;
+
+    public nint NativeDeviceHandle => NativeDevice;
+
+    public nint NativeQueueHandle => NativeQueue;
 
     public Task InitializeAsync(RequestAdapterOptions options, DeviceDescriptor descriptor)
     {
@@ -89,54 +112,33 @@ public class GraphicsContext : IDisposable
             Device.InstanceProcessEvents(NativeInstance);
     }
 
-    public unsafe void Dispose()
+    public void Dispose()
     {
         if (_disposed) return;
         _disposed = true;
 
-        // Release compute pipelines
-        { var c = _computePipelines.Cursor(); while (c.Next(out _, out var it, out _)) Device.ReleaseComputePipeline(it.Value.NativePtr); }
-        _computePipelines.Dispose();
+        _computePipelines.ForSlice<ComputePipelineData>(
+            (ref ComputePipelineData cp) => Device.ReleaseComputePipeline(cp.NativePtr));
+        _renderPipelines.ForSlice<RenderPipelineData>(
+            (ref RenderPipelineData rp) => Device.ReleaseRenderPipeline(rp.NativePtr));
+        _pipelineLayouts.ForSlice<PipelineLayoutData>(
+            (ref PipelineLayoutData pl) => Device.ReleasePipelineLayout(pl.NativePtr));
+        _bindGroups.ForSlice<BindGroupData>(
+            (ref BindGroupData bg) => Device.ReleaseBindGroup(bg.NativePtr));
+        _bindGroupLayouts.ForSlice<BindGroupLayoutData>(
+            (ref BindGroupLayoutData bgl) => Device.ReleaseBindGroupLayout(bgl.NativePtr));
+        _shaders.ForSlice<ShaderData>(
+            (ref ShaderData s) => Device.ReleaseShaderModule(s.NativePtr));
+        _samplers.ForSlice<SamplerData>(
+            (ref SamplerData s) => Device.ReleaseSampler(s.NativePtr));
+        _textureViews.ForSlice<TextureViewData>(
+            (ref TextureViewData tv) => Device.ReleaseTextureView(tv.NativePtr));
+        _textures.ForSlice<TextureData>(
+            (ref TextureData t) => Device.ReleaseTexture(t.NativePtr));
+        _buffers.ForSlice<BufferData>(
+            (ref BufferData b) => Device.ReleaseBuffer(b.NativePtr));
 
-        // Release render pipelines
-        { var c = _renderPipelines.Cursor(); while (c.Next(out _, out var it, out _)) Device.ReleaseRenderPipeline(it.Value.NativePtr); }
-        _renderPipelines.Dispose();
-
-        // Release pipeline layouts (free dynamic BGL handle arrays)
-        { var c = _pipelineLayouts.Cursor(); while (c.Next(out _, out var it, out _)) {
-            ref var pl = ref it.Value;
-            if (pl.BindGroupLayoutHandles != null) NativeMemory.Free(pl.BindGroupLayoutHandles);
-            Device.ReleasePipelineLayout(pl.NativePtr);
-        }}
-        _pipelineLayouts.Dispose();
-
-        // Release bind groups
-        { var c = _bindGroups.Cursor(); while (c.Next(out _, out var it, out _)) Device.ReleaseBindGroup(it.Value.NativePtr); }
-        _bindGroups.Dispose();
-
-        // Release bind group layouts
-        { var c = _bindGroupLayouts.Cursor(); while (c.Next(out _, out var it, out _)) Device.ReleaseBindGroupLayout(it.Value.NativePtr); }
-        _bindGroupLayouts.Dispose();
-
-        // Release shaders
-        { var c = _shaders.Cursor(); while (c.Next(out _, out var it, out _)) Device.ReleaseShaderModule(it.Value.NativePtr); }
-        _shaders.Dispose();
-
-        // Release samplers
-        { var c = _samplers.Cursor(); while (c.Next(out _, out var it, out _)) Device.ReleaseSampler(it.Value.NativePtr); }
-        _samplers.Dispose();
-
-        // Release texture views
-        { var c = _textureViews.Cursor(); while (c.Next(out _, out var it, out _)) Device.ReleaseTextureView(it.Value.NativePtr); }
-        _textureViews.Dispose();
-
-        // Release textures
-        { var c = _textures.Cursor(); while (c.Next(out _, out var it, out _)) Device.ReleaseTexture(it.Value.NativePtr); }
-        _textures.Dispose();
-
-        // Release buffers
-        { var c = _buffers.Cursor(); while (c.Next(out _, out var it, out _)) Device.ReleaseBuffer(it.Value.NativePtr); }
-        _buffers.Dispose();
+        _world.Dispose();
 
         if (NativeDevice != 0) { Device.ReleaseDevice(NativeDevice); NativeDevice = 0; }
         if (NativeAdapter != 0) { Device.ReleaseAdapter(NativeAdapter); NativeAdapter = 0; }

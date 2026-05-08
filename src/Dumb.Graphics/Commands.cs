@@ -1,15 +1,46 @@
-using Dumb.Engine.Graph;
+using Sia;
 using Silk.NET.WebGPU;
 
 namespace Dumb.Graphics;
 
 public static unsafe class Commands
 {
-    public static GpuEncoder CreateEncoder(GraphicsContext ctx, byte* label = null)
+    public static Encoder CreateEncoder(GraphicsContext ctx, byte* label = null)
     {
         CommandEncoderDescriptor desc = new() { Label = label };
         nint native = ctx.Command.CreateCommandEncoder(ctx.NativeDevice, &desc);
-        return new GpuEncoder(ctx, native);
+        return new Encoder(ctx, native);
+    }
+
+    public static RenderPassColorAttachment ColorAttachment(
+        GraphicsContext ctx,
+        Entity view,
+        Color clearColor,
+        LoadOp loadOp = LoadOp.Clear,
+        StoreOp storeOp = StoreOp.Store)
+    {
+        return new RenderPassColorAttachment
+        {
+            View = (TextureView*)view.Get<TextureViewData>().NativePtr,
+            DepthSlice = uint.MaxValue,
+            ResolveTarget = null,
+            LoadOp = loadOp,
+            StoreOp = storeOp,
+            ClearValue = clearColor
+        };
+    }
+
+    public static RenderPassDescriptor RenderPass(RenderPassColorAttachment* colorAttachment)
+    {
+        return new RenderPassDescriptor
+        {
+            ColorAttachmentCount = 1,
+            ColorAttachments = colorAttachment,
+            DepthStencilAttachment = null,
+            OcclusionQuerySet = null,
+            TimestampWrites = null,
+            Label = null
+        };
     }
 
     public static void Submit(GraphicsContext ctx, nint commandBuffer)
@@ -36,12 +67,12 @@ public static unsafe class Commands
     }
 }
 
-public unsafe ref struct GpuEncoder
+public unsafe ref struct Encoder
 {
     readonly GraphicsContext _ctx;
     nint _encoder;
 
-    internal GpuEncoder(GraphicsContext ctx, nint encoder)
+    internal Encoder(GraphicsContext ctx, nint encoder)
     {
         _ctx = ctx;
         _encoder = encoder;
@@ -62,12 +93,12 @@ public unsafe ref struct GpuEncoder
     }
 
     public void CopyBufferToBuffer(
-        Handle<BufferData> source, ulong sourceOffset,
-        Handle<BufferData> destination, ulong destinationOffset, ulong size)
+        Entity source, ulong sourceOffset,
+        Entity destination, ulong destinationOffset, ulong size)
     {
         ThrowIfFinished();
-        ref var src = ref _ctx._buffers.Get(source);
-        ref var dst = ref _ctx._buffers.Get(destination);
+        ref var src = ref source.Get<BufferData>();
+        ref var dst = ref destination.Get<BufferData>();
         _ctx.Command.CopyBufferToBuffer(_encoder, src.NativePtr, sourceOffset, dst.NativePtr, destinationOffset, size);
     }
 
@@ -92,7 +123,7 @@ public unsafe ref struct GpuEncoder
     readonly void ThrowIfFinished()
     {
         if (_encoder == 0)
-            throw new ObjectDisposedException(nameof(GpuEncoder));
+            throw new ObjectDisposedException(nameof(Encoder));
     }
 }
 
@@ -107,33 +138,33 @@ public unsafe ref struct RenderPass
         _pass = pass;
     }
 
-    public void SetPipeline(Handle<RenderPipelineData> pipeline)
+    public void SetPipeline(Entity pipeline)
     {
         ThrowIfEnded();
-        ref var data = ref _ctx._renderPipelines.Get(pipeline);
+        ref var data = ref pipeline.Get<RenderPipelineData>();
         _ctx.Command.RenderPassEncoderSetPipeline(_pass, data.NativePtr);
     }
 
-    public void SetBindGroup(uint groupIndex, Handle<BindGroupData> group, ReadOnlySpan<uint> dynamicOffsets = default)
+    public void SetBindGroup(uint groupIndex, Entity group, ReadOnlySpan<uint> dynamicOffsets = default)
     {
         ThrowIfEnded();
-        ref var data = ref _ctx._bindGroups.Get(group);
+        ref var data = ref group.Get<BindGroupData>();
         fixed (uint* offsets = dynamicOffsets)
             _ctx.Command.RenderPassEncoderSetBindGroup(_pass, groupIndex, data.NativePtr, (nuint)dynamicOffsets.Length, offsets);
     }
 
-    public void SetVertexBuffer(uint slot, Handle<BufferData> buffer, ulong offset = 0, ulong size = unchecked((ulong)-1))
+    public void SetVertexBuffer(uint slot, Entity buffer, ulong offset = 0, ulong size = unchecked((ulong)-1))
     {
         ThrowIfEnded();
-        ref var data = ref _ctx._buffers.Get(buffer);
+        ref var data = ref buffer.Get<BufferData>();
         if (size == unchecked((ulong)-1)) size = data.Size - offset;
         _ctx.Command.RenderPassEncoderSetVertexBuffer(_pass, slot, data.NativePtr, offset, size);
     }
 
-    public void SetIndexBuffer(Handle<BufferData> buffer, IndexFormat format, ulong offset = 0, ulong size = unchecked((ulong)-1))
+    public void SetIndexBuffer(Entity buffer, IndexFormat format, ulong offset = 0, ulong size = unchecked((ulong)-1))
     {
         ThrowIfEnded();
-        ref var data = ref _ctx._buffers.Get(buffer);
+        ref var data = ref buffer.Get<BufferData>();
         if (size == unchecked((ulong)-1)) size = data.Size - offset;
         _ctx.Command.RenderPassEncoderSetIndexBuffer(_pass, data.NativePtr, format, offset, size);
     }
@@ -194,17 +225,17 @@ public unsafe ref struct ComputePass
         _pass = pass;
     }
 
-    public void SetPipeline(Handle<ComputePipelineData> pipeline)
+    public void SetPipeline(Entity pipeline)
     {
         ThrowIfEnded();
-        ref var data = ref _ctx._computePipelines.Get(pipeline);
+        ref var data = ref pipeline.Get<ComputePipelineData>();
         _ctx.Command.ComputePassEncoderSetPipeline(_pass, data.NativePtr);
     }
 
-    public void SetBindGroup(uint groupIndex, Handle<BindGroupData> group, ReadOnlySpan<uint> dynamicOffsets = default)
+    public void SetBindGroup(uint groupIndex, Entity group, ReadOnlySpan<uint> dynamicOffsets = default)
     {
         ThrowIfEnded();
-        ref var data = ref _ctx._bindGroups.Get(group);
+        ref var data = ref group.Get<BindGroupData>();
         fixed (uint* offsets = dynamicOffsets)
             _ctx.Command.ComputePassEncoderSetBindGroup(_pass, groupIndex, data.NativePtr, (nuint)dynamicOffsets.Length, offsets);
     }

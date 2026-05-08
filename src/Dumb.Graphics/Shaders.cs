@@ -1,29 +1,54 @@
 using System.Threading;
-using Dumb.Engine.Graph;
+using Sia;
 using Silk.NET.WebGPU;
 
 namespace Dumb.Graphics;
 
 public static unsafe class Shaders
 {
-    public static Handle<ShaderData> Create(GraphicsContext ctx, ShaderModuleDescriptor descriptor)
+    public static Entity Wgsl(GraphicsContext ctx, string source)
+    {
+        var bytes = System.Text.Encoding.UTF8.GetBytes(source + '\0');
+        fixed (byte* sourcePtr = bytes)
+        {
+            ShaderModuleWGSLDescriptor wgsl = new()
+            {
+                Chain = new ChainedStruct
+                {
+                    Next = null,
+                    SType = SType.ShaderModuleWgslDescriptor
+                },
+                Code = sourcePtr
+            };
+
+            ShaderModuleDescriptor descriptor = new()
+            {
+                NextInChain = (ChainedStruct*)&wgsl,
+                HintCount = 0,
+                Hints = null,
+                Label = null
+            };
+            return Create(ctx, descriptor);
+        }
+    }
+
+    public static Entity Create(GraphicsContext ctx, ShaderModuleDescriptor descriptor)
     {
         nint native = ctx.Device.CreateShaderModule(ctx.NativeDevice, &descriptor);
-        return ctx._shaders.Create(new ShaderData
+        return ctx._shaders.Create(HList.From(new ShaderData
         {
             NativePtr = native,
             RefCount = 1
-        });
+        }));
     }
 
-    internal static void Release(GraphicsContext ctx, Handle<ShaderData> handle)
+    internal static void Release(GraphicsContext ctx, Entity shader)
     {
-        if (!ctx._shaders.TryGet(handle, out var r)) return;
-        ref var shader = ref r.Value;
-        if (Interlocked.Decrement(ref shader.RefCount) == 0)
+        ref var s = ref shader.Get<ShaderData>();
+        if (Interlocked.Decrement(ref s.RefCount) == 0)
         {
-            ctx.Device.ReleaseShaderModule(shader.NativePtr);
-            ctx._shaders.Destroy(handle);
+            ctx.Device.ReleaseShaderModule(s.NativePtr);
+            shader.Destroy();
         }
     }
 }

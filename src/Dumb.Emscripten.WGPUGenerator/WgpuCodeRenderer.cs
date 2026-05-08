@@ -143,28 +143,106 @@ internal static class WgpuCodeRenderer
     private static string RenderEnumCast(WgpuEnumComparison comparison, ISet<string> availableSilkEnumValues)
     {
         var silkName = WgpuNames.SilkTypeName(comparison.Source.Name);
-        var valueMaps = comparison.ValueMaps
-            .Where(map => availableSilkEnumValues.Contains(silkName + "." + map.Silk.Name))
-            .ToArray();
+        var (valueMaps, expanded) = BuildEnumValueMaps(comparison, silkName, availableSilkEnumValues);
 
-        if (!valueMaps.Any(static map => map.Source.Value != map.Silk.Value))
+        if (!expanded && !valueMaps.Any(static map => map.Source.Value != map.Silk.Value))
             return string.Join(WgpuNames.NEW_LINE, [
                 $"    public static {comparison.Source.Name} Cast(this {silkName} v) => ({comparison.Source.Name})v;",
                 $"    public static {silkName} Cast(this {comparison.Source.Name} v) => ({silkName})v;",
             ]);
 
         return string.Join(WgpuNames.NEW_LINE + WgpuNames.NEW_LINE, [
-            RenderEnumValueMap(comparison.Source.Name, silkName, valueMaps, silkToSource: true),
-            RenderEnumValueMap(comparison.Source.Name, silkName, valueMaps, silkToSource: false),
+            RenderEnumValueMap(comparison.Source.Name, silkName, valueMaps, silkToSource: true, includeAllCases: expanded),
+            RenderEnumValueMap(comparison.Source.Name, silkName, valueMaps, silkToSource: false, includeAllCases: expanded),
         ]);
     }
 
-    private static string RenderEnumValueMap(string sourceName, string silkName, WgpuEnumValueMap[] maps, bool silkToSource)
+    private static (WgpuEnumValueMap[] Maps, bool Expanded) BuildEnumValueMaps(
+        WgpuEnumComparison comparison,
+        string silkName,
+        ISet<string> availableSilkEnumValues)
+    {
+        var valueMaps = comparison.ValueMaps
+            .Where(map => availableSilkEnumValues.Contains(silkName + "." + map.Silk.Name))
+            .ToArray();
+        if (valueMaps.Length != 0)
+            return (valueMaps, false);
+
+        var availableSilkValues = availableSilkEnumValues
+            .Where(value => value.StartsWith(silkName + ".", StringComparison.Ordinal))
+            .Select(value => value.Substring(silkName.Length + 1))
+            .OrderBy(value => value.StartsWith(silkName, StringComparison.Ordinal) ? 1 : 0)
+            .ThenBy(static value => value.Length)
+            .ToArray();
+        if (availableSilkValues.Length == 0)
+            return ([], false);
+
+        var silkValuesByNormalizedName = availableSilkValues
+            .GroupBy(value => NormalizeEnumMemberName(value, silkName), StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal);
+
+        var silkHeaderValuesByNormalizedName = comparison.Silk.Values
+            .GroupBy(value => NormalizeEnumMemberName(value.Name, silkName), StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal);
+
+        var maps = comparison.Source.Values
+            .Select(source => TryBuildEnumValueMap(source, silkName, silkValuesByNormalizedName, silkHeaderValuesByNormalizedName))
+            .Where(static map => map is not null)
+            .Select(static map => map!)
+            .ToArray();
+
+        return (maps, maps.Length != 0);
+    }
+
+    private static WgpuEnumValueMap? TryBuildEnumValueMap(
+        WgpuEnumValue source,
+        string silkName,
+        IReadOnlyDictionary<string, string> silkValuesByNormalizedName,
+        IReadOnlyDictionary<string, WgpuEnumValue> silkHeaderValuesByNormalizedName)
+    {
+        var normalized = NormalizeEnumMemberName(source.Name, silkName);
+        return silkValuesByNormalizedName.TryGetValue(normalized, out var silkValue) &&
+            silkHeaderValuesByNormalizedName.TryGetValue(normalized, out var silkHeaderValue)
+            ? new WgpuEnumValueMap(source, new WgpuEnumValue(silkValue, silkHeaderValue.Value))
+            : null;
+    }
+
+    private static string NormalizeEnumMemberName(string name, string silkName)
+    {
+        var normalized = name.TrimStart('_');
+        foreach (var prefix in EnumNamePrefixes(silkName))
+        {
+            if (normalized.StartsWith(prefix, StringComparison.Ordinal))
+            {
+                normalized = normalized.Substring(prefix.Length);
+                break;
+            }
+        }
+        return normalized.TrimStart('_');
+    }
+
+    private static IEnumerable<string> EnumNamePrefixes(string silkName)
+    {
+        yield return silkName;
+
+        for (var i = 1; i < silkName.Length; i++)
+        {
+            if (char.IsUpper(silkName[i]))
+                yield return silkName.Substring(i);
+        }
+    }
+
+    private static string RenderEnumValueMap(
+        string sourceName,
+        string silkName,
+        WgpuEnumValueMap[] maps,
+        bool silkToSource,
+        bool includeAllCases)
     {
         var sourceType = silkToSource ? silkName : sourceName;
         var targetType = silkToSource ? sourceName : silkName;
         var cases = maps
-            .Where(static map => map.Source.Value != map.Silk.Value)
+            .Where(map => includeAllCases || map.Source.Value != map.Silk.Value)
             .Select(map => silkToSource
                 ? $"        {silkName}.{map.Silk.Name} => {sourceName}.{map.Source.Name},"
                 : $"        {sourceName}.{map.Source.Name} => {silkName}.{map.Silk.Name},");
