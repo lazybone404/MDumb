@@ -35,6 +35,10 @@ public class GraphicsContext : IDisposable
     internal readonly IDeviceBackend Device;
     internal readonly ICommandBackend Command;
 
+#if BROWSER
+    readonly WGPUBrowser _wgpu;
+#endif
+
     bool _disposed;
 
     public GraphicsContext()
@@ -51,9 +55,9 @@ public class GraphicsContext : IDisposable
         _computePipelines = _world.AcquireHost<HList<ComputePipelineData, EmptyHList>, ArrayEntityHost<HList<ComputePipelineData, EmptyHList>>>();
 
 #if BROWSER
-        var wgpu = new WGPUBrowser();
-        Device = new BrowserDeviceBackend(wgpu);
-        Command = new BrowserCommandBackend(wgpu);
+        _wgpu = new WGPUBrowser();
+        Device = new BrowserDeviceBackend(_wgpu);
+        Command = new BrowserCommandBackend(_wgpu);
 #else
         var wgpu = global::Silk.NET.WebGPU.WebGPU.GetApi();
         Device = new NativeDeviceBackend(wgpu);

@@ -8,5 +8,7 @@
     <Project Path="examples/Dumb.Engine.Example/Dumb.Engine.Example.Browser.csproj" />
     <Project Path="examples/Dumb.Engine.Example/Dumb.Engine.Example.csproj" />
     <Project Path="examples/Dumb.Emscripten.Demo/Dumb.Emscripten.Demo.csproj" />
+    <Project Path="examples/Dumb.Graphics.Example/Dumb.Graphics.Example.Browser.csproj" />
+    <Project Path="examples/Dumb.Graphics.Example/Dumb.Graphics.Example.csproj" />
   </Folder>
 </Solution>
