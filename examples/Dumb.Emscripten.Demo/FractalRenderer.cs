@@ -9,7 +9,7 @@ using Dawn = Silk.NET.WebGPU.Extensions.Dawn;
 namespace Dumb.Emscripten.Demo;
 
 [StructLayout(LayoutKind.Sequential)]
-struct FractalUniforms
+internal struct FractalUniforms
 {
     public float CenterX;
     public float CenterY;
@@ -533,14 +533,14 @@ fn fs_main(@location(0) uv: vec2f) -> @location(0) vec4f {
             Label = null
         };
 
-        var encoder = _wgpu.DeviceCreateCommandEncoder(_device, default);
+        var encoder = _wgpu.DeviceCreateCommandEncoder(_device, null);
         var pass = _wgpu.CommandEncoderBeginRenderPass(encoder, renderPassDesc);
         _wgpu.RenderPassEncoderSetViewport(pass, 0, 0, _width, _height, 0, 1);
         _wgpu.RenderPassEncoderSetPipeline(pass, _pipeline);
         _wgpu.RenderPassEncoderSetBindGroup(pass, 0, _bindGroup, 0, null);
         _wgpu.RenderPassEncoderDraw(pass, 6, 1, 0, 0);
         _wgpu.RenderPassEncoderEnd(pass);
-        var cmdBuffer = _wgpu.CommandEncoderFinish(encoder, default);
+        var cmdBuffer = _wgpu.CommandEncoderFinish(encoder, null);
 
         _wgpu.QueueSubmit(_queue, 1, &cmdBuffer);
 

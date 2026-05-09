@@ -8,7 +8,7 @@ public static unsafe class Commands
     public static Encoder CreateEncoder(GraphicsContext ctx, byte* label = null)
     {
         CommandEncoderDescriptor desc = new() { Label = label };
-        nint native = ctx.Command.CreateCommandEncoder(ctx.NativeDevice, &desc);
+        var native = ctx.Command.CreateCommandEncoder(ctx.NativeDevice, &desc);
         return new Encoder(ctx, native);
     }
 
@@ -43,6 +43,46 @@ public static unsafe class Commands
         };
     }
 
+    public static RenderPassDescriptor RenderPass(
+        ReadOnlySpan<RenderPassColorAttachment> colorAttachments,
+        RenderPassDepthStencilAttachment* depthStencil = null)
+    {
+        fixed (RenderPassColorAttachment* ptr = colorAttachments)
+        {
+            return new RenderPassDescriptor
+            {
+                ColorAttachmentCount = (nuint)colorAttachments.Length,
+                ColorAttachments = ptr,
+                DepthStencilAttachment = depthStencil,
+                OcclusionQuerySet = null,
+                TimestampWrites = null,
+                Label = null
+            };
+        }
+    }
+
+    public static RenderPassDepthStencilAttachment DepthStencilAttachment(
+        GraphicsContext ctx,
+        Entity view,
+        LoadOp depthLoadOp = LoadOp.Clear,
+        StoreOp depthStoreOp = StoreOp.Store,
+        float depthClear = 1.0f,
+        bool depthReadOnly = false)
+    {
+        return new RenderPassDepthStencilAttachment
+        {
+            View = (TextureView*)view.Get<TextureViewData>().NativePtr,
+            DepthLoadOp = depthLoadOp,
+            DepthStoreOp = depthStoreOp,
+            DepthClearValue = depthClear,
+            DepthReadOnly = depthReadOnly,
+            StencilLoadOp = LoadOp.Undefined,
+            StencilStoreOp = StoreOp.Undefined,
+            StencilClearValue = 0,
+            StencilReadOnly = true
+        };
+    }
+
     public static void Submit(GraphicsContext ctx, nint commandBuffer)
     {
         var cb = commandBuffer;
@@ -69,8 +109,8 @@ public static unsafe class Commands
 
 public unsafe ref struct Encoder
 {
-    readonly GraphicsContext _ctx;
-    nint _encoder;
+    private readonly GraphicsContext _ctx;
+    private nint _encoder;
 
     internal Encoder(GraphicsContext ctx, nint encoder)
     {
@@ -81,14 +121,14 @@ public unsafe ref struct Encoder
     public RenderPass BeginRenderPass(RenderPassDescriptor* descriptor)
     {
         ThrowIfFinished();
-        nint pass = _ctx.Command.CommandEncoderBeginRenderPass(_encoder, descriptor);
+        var pass = _ctx.Command.CommandEncoderBeginRenderPass(_encoder, descriptor);
         return new RenderPass(_ctx, pass);
     }
 
     public ComputePass BeginComputePass(ComputePassDescriptor* descriptor)
     {
         ThrowIfFinished();
-        nint pass = _ctx.Command.CommandEncoderBeginComputePass(_encoder, descriptor);
+        var pass = _ctx.Command.CommandEncoderBeginComputePass(_encoder, descriptor);
         return new ComputePass(_ctx, pass);
     }
 
@@ -120,7 +160,7 @@ public unsafe ref struct Encoder
         _encoder = 0;
     }
 
-    readonly void ThrowIfFinished()
+    private readonly void ThrowIfFinished()
     {
         if (_encoder == 0)
             throw new ObjectDisposedException(nameof(Encoder));
@@ -129,8 +169,8 @@ public unsafe ref struct Encoder
 
 public unsafe ref struct RenderPass
 {
-    readonly GraphicsContext _ctx;
-    nint _pass;
+    private readonly GraphicsContext _ctx;
+    private nint _pass;
 
     internal RenderPass(GraphicsContext ctx, nint pass)
     {
@@ -207,7 +247,7 @@ public unsafe ref struct RenderPass
             End();
     }
 
-    readonly void ThrowIfEnded()
+    private readonly void ThrowIfEnded()
     {
         if (_pass == 0)
             throw new ObjectDisposedException(nameof(RenderPass));
@@ -216,8 +256,8 @@ public unsafe ref struct RenderPass
 
 public unsafe ref struct ComputePass
 {
-    readonly GraphicsContext _ctx;
-    nint _pass;
+    private readonly GraphicsContext _ctx;
+    private nint _pass;
 
     internal ComputePass(GraphicsContext ctx, nint pass)
     {
@@ -260,7 +300,7 @@ public unsafe ref struct ComputePass
             End();
     }
 
-    readonly void ThrowIfEnded()
+    private readonly void ThrowIfEnded()
     {
         if (_pass == 0)
             throw new ObjectDisposedException(nameof(ComputePass));

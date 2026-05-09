@@ -1,3 +1,4 @@
+using System.Text;
 using System.Threading;
 using Sia;
 using Silk.NET.WebGPU;
@@ -9,49 +10,30 @@ public readonly struct BindingLayout
 {
     internal readonly BindGroupLayoutEntry Entry;
 
-    private BindingLayout(BindGroupLayoutEntry entry)
-    {
-        Entry = entry;
-    }
+    private BindingLayout(BindGroupLayoutEntry entry) => Entry = entry;
 
     public static BindingLayout UniformBuffer(uint binding, ShaderStage visibility, ulong minBindingSize)
-    {
-        return Buffer(binding, visibility, BufferBindingType.Uniform, minBindingSize);
-    }
+        => Buffer(binding, visibility, BufferBindingType.Uniform, minBindingSize);
 
     public static BindingLayout StorageBuffer(
-        uint binding,
-        ShaderStage visibility,
-        ulong minBindingSize,
-        bool readOnly = false)
-    {
-        return Buffer(binding, visibility, readOnly ? BufferBindingType.ReadOnlyStorage : BufferBindingType.Storage, minBindingSize);
-    }
+        uint binding, ShaderStage visibility, ulong minBindingSize, bool readOnly = false)
+        => Buffer(binding, visibility, readOnly ? BufferBindingType.ReadOnlyStorage : BufferBindingType.Storage, minBindingSize);
 
     public static BindingLayout Sampler(
-        uint binding,
-        ShaderStage visibility,
-        SamplerBindingType type = SamplerBindingType.Filtering)
-    {
-        return new BindingLayout(new BindGroupLayoutEntry
+        uint binding, ShaderStage visibility, SamplerBindingType type = SamplerBindingType.Filtering)
+        => new(new BindGroupLayoutEntry
         {
             Binding = binding,
             Visibility = visibility,
-            Sampler = new SamplerBindingLayout { Type = type },
-            Buffer = default,
-            Texture = default,
-            StorageTexture = default
+            Sampler = new SamplerBindingLayout { Type = type }
         });
-    }
 
     public static BindingLayout Texture(
-        uint binding,
-        ShaderStage visibility,
+        uint binding, ShaderStage visibility,
         TextureSampleType sampleType = TextureSampleType.Float,
         TextureViewDimension dimension = TextureViewDimension.Dimension2D,
         bool multisampled = false)
-    {
-        return new BindingLayout(new BindGroupLayoutEntry
+        => new(new BindGroupLayoutEntry
         {
             Binding = binding,
             Visibility = visibility,
@@ -60,20 +42,12 @@ public readonly struct BindingLayout
                 SampleType = sampleType,
                 ViewDimension = dimension,
                 Multisampled = multisampled
-            },
-            Buffer = default,
-            Sampler = default,
-            StorageTexture = default
+            }
         });
-    }
 
     private static BindingLayout Buffer(
-        uint binding,
-        ShaderStage visibility,
-        BufferBindingType type,
-        ulong minBindingSize)
-    {
-        return new BindingLayout(new BindGroupLayoutEntry
+        uint binding, ShaderStage visibility, BufferBindingType type, ulong minBindingSize)
+        => new(new BindGroupLayoutEntry
         {
             Binding = binding,
             Visibility = visibility,
@@ -82,12 +56,8 @@ public readonly struct BindingLayout
                 Type = type,
                 HasDynamicOffset = false,
                 MinBindingSize = minBindingSize
-            },
-            Sampler = default,
-            Texture = default,
-            StorageTexture = default
+            }
         });
-    }
 }
 
 public readonly struct Binding
@@ -160,7 +130,7 @@ public static unsafe class Pipelines
         GraphicsContext ctx,
         ReadOnlySpan<BindingLayout> entries)
     {
-        BindGroupLayoutEntry* nativeEntries = stackalloc BindGroupLayoutEntry[entries.Length];
+        var nativeEntries = stackalloc BindGroupLayoutEntry[entries.Length];
         for (var i = 0; i < entries.Length; i++)
             nativeEntries[i] = entries[i].Entry;
 
@@ -175,7 +145,7 @@ public static unsafe class Pipelines
 
     public static Entity CreateBindGroupLayout(GraphicsContext ctx, BindGroupLayoutDescriptor descriptor)
     {
-        nint native = ctx.Device.CreateBindGroupLayout(ctx.NativeDevice, &descriptor);
+        var native = ctx.Device.CreateBindGroupLayout(ctx.NativeDevice, &descriptor);
         return ctx._bindGroupLayouts.Create(HList.From(new BindGroupLayoutData { NativePtr = native, RefCount = 1 }));
     }
 
@@ -196,7 +166,7 @@ public static unsafe class Pipelines
         Entity layout,
         ReadOnlySpan<Binding> bindings)
     {
-        BindGroupEntry* entries = stackalloc BindGroupEntry[bindings.Length];
+        var entries = stackalloc BindGroupEntry[bindings.Length];
         for (var i = 0; i < bindings.Length; i++)
         {
             var binding = bindings[i];
@@ -240,7 +210,7 @@ public static unsafe class Pipelines
         if (layout.Host == null)
             throw new InvalidOperationException("BindGroupLayout entity not alive.");
 
-        nint native = ctx.Device.CreateBindGroup(ctx.NativeDevice, &descriptor);
+        var native = ctx.Device.CreateBindGroup(ctx.NativeDevice, &descriptor);
         return ctx._bindGroups.Create(HList.From(new BindGroupData
         {
             NativePtr = native,
@@ -265,7 +235,7 @@ public static unsafe class Pipelines
         GraphicsContext ctx,
         ReadOnlySpan<Entity> bindGroupLayouts)
     {
-        BindGroupLayout** nativeLayouts = stackalloc BindGroupLayout*[bindGroupLayouts.Length];
+        var nativeLayouts = stackalloc BindGroupLayout*[bindGroupLayouts.Length];
         for (var i = 0; i < bindGroupLayouts.Length; i++)
             nativeLayouts[i] = (BindGroupLayout*)bindGroupLayouts[i].Get<BindGroupLayoutData>().NativePtr;
 
@@ -282,7 +252,7 @@ public static unsafe class Pipelines
         GraphicsContext ctx, PipelineLayoutDescriptor descriptor,
         ReadOnlySpan<Entity> bindGroupLayouts)
     {
-        nint native = ctx.Device.CreatePipelineLayout(ctx.NativeDevice, &descriptor);
+        var native = ctx.Device.CreatePipelineLayout(ctx.NativeDevice, &descriptor);
 
         var handles = bindGroupLayouts.Length > 0
             ? bindGroupLayouts.ToArray()
@@ -338,46 +308,73 @@ public static unsafe class Pipelines
         string vertexEntryPoint = "vs_main",
         string fragmentEntryPoint = "fs_main")
     {
-        var vsBytes = System.Text.Encoding.UTF8.GetBytes(vertexEntryPoint + '\0');
-        var fsBytes = System.Text.Encoding.UTF8.GetBytes(fragmentEntryPoint + '\0');
+        return Render(ctx, shader, layout, colorFormat, null, attributes, vertexStride, null, vertexEntryPoint, fragmentEntryPoint);
+    }
+
+    public static Entity Render(
+        GraphicsContext ctx,
+        Entity shader,
+        Entity layout,
+        TextureFormat colorFormat,
+        TextureFormat? depthFormat,
+        ReadOnlySpan<VertexAttributeLayout> attributes,
+        ulong vertexStride,
+        BlendState? blend = null,
+        string vertexEntryPoint = "vs_main",
+        string fragmentEntryPoint = "fs_main")
+    {
+        DepthStencilState ds = default;
+        DepthStencilState* dsPtr = null;
+        if (depthFormat is { } df)
+        {
+            ds = new DepthStencilState { Format = df, DepthWriteEnabled = true, DepthCompare = CompareFunction.Less };
+            dsPtr = &ds;
+        }
+
+        BlendState bs = default;
+        BlendState* bsPtr = null;
+        if (blend is { } b)
+        {
+            bs = b;
+            bsPtr = &bs;
+        }
+
+        var vsBytes = Encoding.UTF8.GetBytes(vertexEntryPoint + '\0');
+        var fsBytes = Encoding.UTF8.GetBytes(fragmentEntryPoint + '\0');
         fixed (byte* vsPtr = vsBytes)
         fixed (byte* fsPtr = fsBytes)
         {
-            Span<VertexAttribute> nativeAttributes = stackalloc VertexAttribute[attributes.Length];
-            Span<VertexBufferLayout> vertexBuffers = stackalloc VertexBufferLayout[attributes.Length > 0 ? 1 : 0];
-
             if (attributes.Length > 0)
             {
-                fixed (VertexAttribute* nativeAttributePtr = nativeAttributes)
-                fixed (VertexBufferLayout* vertexBufferPtr = vertexBuffers)
+                Span<VertexAttribute> nativeAttributes = stackalloc VertexAttribute[attributes.Length];
+                Span<VertexBufferLayout> vertexBuffers = stackalloc VertexBufferLayout[1];
+                fixed (VertexAttribute* naPtr = nativeAttributes)
+                fixed (VertexBufferLayout* vbPtr = vertexBuffers)
                 {
                     for (var i = 0; i < attributes.Length; i++)
                     {
-                        nativeAttributePtr[i] = new VertexAttribute
+                        naPtr[i] = new VertexAttribute
                         {
                             ShaderLocation = attributes[i].ShaderLocation,
                             Format = attributes[i].Format,
                             Offset = attributes[i].Offset
                         };
                     }
-
-                    vertexBufferPtr[0] = new VertexBufferLayout
+                    vbPtr[0] = new VertexBufferLayout
                     {
                         ArrayStride = vertexStride,
                         StepMode = VertexStepMode.Vertex,
                         AttributeCount = (nuint)attributes.Length,
-                        Attributes = nativeAttributePtr
+                        Attributes = naPtr
                     };
-
-                    return RenderCore(ctx, shader, layout, colorFormat, vsPtr, fsPtr, vertexBufferPtr, 1);
+                    return RenderCore(ctx, shader, layout, colorFormat, vsPtr, fsPtr, vbPtr, 1, bsPtr, dsPtr);
                 }
             }
-
-            return RenderCore(ctx, shader, layout, colorFormat, vsPtr, fsPtr, null, 0);
+            return RenderCore(ctx, shader, layout, colorFormat, vsPtr, fsPtr, null, 0, bsPtr, dsPtr);
         }
     }
 
-    static Entity RenderCore(
+    private static Entity RenderCore(
         GraphicsContext ctx,
         Entity shader,
         Entity layout,
@@ -385,12 +382,14 @@ public static unsafe class Pipelines
         byte* vertexEntryPoint,
         byte* fragmentEntryPoint,
         VertexBufferLayout* vertexBuffers,
-        uint vertexBufferCount)
+        uint vertexBufferCount,
+        BlendState* blend = null,
+        DepthStencilState* depthStencil = null)
     {
         ColorTargetState colorTarget = new()
         {
             Format = colorFormat,
-            Blend = null,
+            Blend = blend,
             WriteMask = ColorWriteMask.All
         };
 
@@ -426,7 +425,7 @@ public static unsafe class Pipelines
                 AlphaToCoverageEnabled = false
             },
             Fragment = &fragment,
-            DepthStencil = null,
+            DepthStencil = depthStencil,
             Label = null
         };
 
@@ -445,9 +444,9 @@ public static unsafe class Pipelines
             layout.Host == null)
             throw new InvalidOperationException("Pipeline dependency not alive.");
 
-        int vsId = vertexShader.Id.Value;
-        int fsId = fragmentShader.Id.Value;
-        int loId = layout.Id.Value;
+        var vsId = vertexShader.Id.Value;
+        var fsId = fragmentShader.Id.Value;
+        var loId = layout.Id.Value;
 
         // Dedup: search existing pipelines for matching shader+layout combination.
         foreach (var entity in ctx._renderPipelines)
@@ -462,7 +461,7 @@ public static unsafe class Pipelines
             }
         }
 
-        nint native = ctx.Device.CreateRenderPipeline(ctx.NativeDevice, descriptor);
+        var native = ctx.Device.CreateRenderPipeline(ctx.NativeDevice, descriptor);
         return ctx._renderPipelines.Create(HList.From(new RenderPipelineData
         {
             NativePtr = native,
@@ -471,6 +470,124 @@ public static unsafe class Pipelines
             Layout = layout,
             RefCount = 1
         }));
+    }
+
+    // --- RenderPipeline MRT (multiple color targets) ---
+
+    public static Entity RenderMRT(
+        GraphicsContext ctx,
+        Entity shader,
+        Entity layout,
+        ReadOnlySpan<TextureFormat> colorFormats,
+        TextureFormat? depthFormat,
+        ReadOnlySpan<VertexAttributeLayout> attributes,
+        ulong vertexStride,
+        BlendState? blend = null,
+        string vertexEntryPoint = "vs_main",
+        string fragmentEntryPoint = "fs_main")
+    {
+        DepthStencilState* dsPtr = null;
+        if (depthFormat is { } df)
+        {
+            var ds = new DepthStencilState { Format = df, DepthWriteEnabled = true, DepthCompare = CompareFunction.Less };
+            dsPtr = &ds;
+        }
+
+        BlendState* bsPtr = null;
+        if (blend is { } b)
+        {
+            var bs = b;
+            bsPtr = &bs;
+        }
+
+        var vsBytes = Encoding.UTF8.GetBytes(vertexEntryPoint + '\0');
+        var fsBytes = Encoding.UTF8.GetBytes(fragmentEntryPoint + '\0');
+        fixed (byte* vsPtr = vsBytes)
+        fixed (byte* fsPtr = fsBytes)
+        {
+            Span<ColorTargetState> colorTargets = stackalloc ColorTargetState[colorFormats.Length];
+            for (var i = 0; i < colorFormats.Length; i++)
+            {
+                colorTargets[i] = new ColorTargetState
+                {
+                    Format = colorFormats[i],
+                    Blend = bsPtr,
+                    WriteMask = ColorWriteMask.All
+                };
+            }
+
+            Span<VertexAttribute> nativeAttributes = stackalloc VertexAttribute[attributes.Length];
+            Span<VertexBufferLayout> vertexBuffers = stackalloc VertexBufferLayout[attributes.Length > 0 ? 1 : 0];
+
+            VertexBufferLayout* vbPtr = null;
+            uint vbCount = 0;
+            if (attributes.Length > 0)
+            {
+                fixed (VertexAttribute* naPtr = nativeAttributes)
+                fixed (VertexBufferLayout* vblPtr = vertexBuffers)
+                {
+                    for (var i = 0; i < attributes.Length; i++)
+                    {
+                        naPtr[i] = new VertexAttribute
+                        {
+                            ShaderLocation = attributes[i].ShaderLocation,
+                            Format = attributes[i].Format,
+                            Offset = attributes[i].Offset
+                        };
+                    }
+                    vblPtr[0] = new VertexBufferLayout
+                    {
+                        ArrayStride = vertexStride,
+                        StepMode = VertexStepMode.Vertex,
+                        AttributeCount = (nuint)attributes.Length,
+                        Attributes = naPtr
+                    };
+                    vbPtr = vblPtr;
+                    vbCount = 1;
+                }
+            }
+
+            fixed (ColorTargetState* ctPtr = colorTargets)
+            {
+                FragmentState fragment = new()
+                {
+                    Module = (ShaderModule*)shader.Get<ShaderData>().NativePtr,
+                    EntryPoint = fsPtr,
+                    TargetCount = (nuint)colorFormats.Length,
+                    Targets = ctPtr
+                };
+
+                RenderPipelineDescriptor descriptor = new()
+                {
+                    Layout = (PipelineLayout*)layout.Get<PipelineLayoutData>().NativePtr,
+                    Vertex = new VertexState
+                    {
+                        Module = (ShaderModule*)shader.Get<ShaderData>().NativePtr,
+                        EntryPoint = vsPtr,
+                        BufferCount = vbCount,
+                        Buffers = vbPtr
+                    },
+                    Primitive = new PrimitiveState
+                    {
+                        Topology = PrimitiveTopology.TriangleList,
+                        StripIndexFormat = IndexFormat.Undefined,
+                        FrontFace = FrontFace.Ccw,
+                        CullMode = CullMode.None
+                    },
+                    Multisample = new MultisampleState
+                    {
+                        Count = 1,
+                        Mask = uint.MaxValue,
+                        AlphaToCoverageEnabled = false
+                    },
+                    Fragment = &fragment,
+                    DepthStencil = dsPtr,
+                    Label = null
+                };
+
+                return CreateRenderPipeline(ctx, &descriptor, shader, shader, layout);
+            }
+        }
     }
 
     internal static void ReleaseRenderPipeline(GraphicsContext ctx, Entity pipeline)
@@ -491,7 +608,7 @@ public static unsafe class Pipelines
         Entity layout,
         string entryPoint = "cs_main")
     {
-        var entryBytes = System.Text.Encoding.UTF8.GetBytes(entryPoint + '\0');
+        var entryBytes = Encoding.UTF8.GetBytes(entryPoint + '\0');
         fixed (byte* entryPtr = entryBytes)
         {
             ComputePipelineDescriptor descriptor = new()
@@ -519,8 +636,8 @@ public static unsafe class Pipelines
         if (computeShader.Host == null || layout.Host == null)
             throw new InvalidOperationException("Pipeline dependency not alive.");
 
-        int csId = computeShader.Id.Value;
-        int loId = layout.Id.Value;
+        var csId = computeShader.Id.Value;
+        var loId = layout.Id.Value;
 
         // Dedup.
         foreach (var entity in ctx._computePipelines)
@@ -533,7 +650,7 @@ public static unsafe class Pipelines
             }
         }
 
-        nint native = ctx.Device.CreateComputePipeline(ctx.NativeDevice, descriptor);
+        var native = ctx.Device.CreateComputePipeline(ctx.NativeDevice, descriptor);
         return ctx._computePipelines.Create(HList.From(new ComputePipelineData
         {
             NativePtr = native,

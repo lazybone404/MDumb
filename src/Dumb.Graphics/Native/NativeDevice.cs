@@ -4,7 +4,7 @@ namespace Dumb.Graphics.Native;
 
 internal sealed unsafe class NativeDeviceBackend : IDeviceBackend
 {
-    readonly WebGPU _wgpu;
+    private readonly WebGPU _wgpu;
 
     public NativeDeviceBackend(WebGPU wgpu) => _wgpu = wgpu;
 

@@ -2,6 +2,7 @@
   <Folder Name="/src/">
     <Project Path="src/Dumb.Emscripten/Dumb.Emscripten.csproj" />
     <Project Path="src/Dumb.Engine/Dumb.Engine.csproj" />
+    <Project Path="src/Dumb.Engine.Tests/Dumb.Engine.Tests.csproj" />
     <Project Path="src/Dumb.Graphics/Dumb.Graphics.csproj" />
   </Folder>
   <Folder Name="/examples/">

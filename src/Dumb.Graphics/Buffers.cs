@@ -21,7 +21,7 @@ public static unsafe class Buffers
 
     public static Entity Create(GraphicsContext ctx, BufferDescriptor descriptor)
     {
-        nint native = ctx.Device.CreateBuffer(ctx.NativeDevice, &descriptor);
+        var native = ctx.Device.CreateBuffer(ctx.NativeDevice, &descriptor);
         return ctx._buffers.Create(HList.From(new BufferData
         {
             NativePtr = native,

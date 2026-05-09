@@ -1,3 +1,4 @@
+using System.Text;
 using System.Threading;
 using Sia;
 using Silk.NET.WebGPU;
@@ -8,7 +9,7 @@ public static unsafe class Shaders
 {
     public static Entity Wgsl(GraphicsContext ctx, string source)
     {
-        var bytes = System.Text.Encoding.UTF8.GetBytes(source + '\0');
+        var bytes = Encoding.UTF8.GetBytes(source + '\0');
         fixed (byte* sourcePtr = bytes)
         {
             ShaderModuleWGSLDescriptor wgsl = new()
@@ -34,7 +35,7 @@ public static unsafe class Shaders
 
     public static Entity Create(GraphicsContext ctx, ShaderModuleDescriptor descriptor)
     {
-        nint native = ctx.Device.CreateShaderModule(ctx.NativeDevice, &descriptor);
+        var native = ctx.Device.CreateShaderModule(ctx.NativeDevice, &descriptor);
         return ctx._shaders.Create(HList.From(new ShaderData
         {
             NativePtr = native,

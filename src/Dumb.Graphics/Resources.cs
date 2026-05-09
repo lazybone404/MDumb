@@ -3,10 +3,6 @@ using Sia;
 
 namespace Dumb.Graphics;
 
-// GPU resource structs stored as single-component Sia entities.
-// Entity references use Sia's ObjectPool<Entity>; destroyed entities return to pool.
-// RefCount managed via Interlocked.Increment/Decrement.
-
 public struct BufferData
 {
     public nint NativePtr;
@@ -80,5 +76,24 @@ public struct ComputePipelineData
     public nint NativePtr;
     public Entity ComputeShader;
     public Entity Layout;
+    public int RefCount;
+}
+
+public struct MaterialResourceData
+{
+    public Entity Pipeline;
+    public Entity PipelineLayout;
+    public Entity?[] BindGroups;
+    public int RefCount;
+}
+
+public struct MeshResourceData
+{
+    public Entity[] VertexBuffers;
+    public int[] VertexCounts;
+    public Entity IndexBuffer;
+    public IndexFormat IndexFormat;
+    public uint IndexCount;
+    public Engine.Mesh.SubMesh[] SubMeshes;
     public int RefCount;
 }

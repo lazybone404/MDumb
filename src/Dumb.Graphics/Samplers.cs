@@ -38,7 +38,7 @@ public static unsafe class Samplers
 
     public static Entity Create(GraphicsContext ctx, SamplerDescriptor descriptor)
     {
-        nint native = ctx.Device.CreateSampler(ctx.NativeDevice, &descriptor);
+        var native = ctx.Device.CreateSampler(ctx.NativeDevice, &descriptor);
         return ctx._samplers.Create(HList.From(new SamplerData
         {
             NativePtr = native,

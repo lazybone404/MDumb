@@ -56,13 +56,13 @@ public unsafe class AudioPlayer : IDisposable
 
     private void GenerateBuffer(float frequency, int waveformType)
     {
-        short[] samples = new short[_bufferSamples];
+        var samples = new short[_bufferSamples];
         double phase = 0;
-        double phaseInc = (double)frequency / _sampleRate * 2.0 * Math.PI;
+        var phaseInc = (double)frequency / _sampleRate * 2.0 * Math.PI;
 
-        for (int i = 0; i < _bufferSamples; i++)
+        for (var i = 0; i < _bufferSamples; i++)
         {
-            double value = waveformType switch
+            var value = waveformType switch
             {
                 0 => Math.Sin(phase),                                    // sine
                 1 => Math.Sin(phase) >= 0 ? 1.0 : -0.8,                  // square
@@ -84,7 +84,7 @@ public unsafe class AudioPlayer : IDisposable
     public void SetFrequency(float hz)
     {
         if (_source == 0) return;
-        float pitch = Math.Clamp(hz / _baseFrequency, 0.25f, 4.0f);
+        var pitch = Math.Clamp(hz / _baseFrequency, 0.25f, 4.0f);
         _al.SetSourceProperty(_source, SourceFloat.Pitch, pitch);
     }
 
@@ -102,7 +102,7 @@ public unsafe class AudioPlayer : IDisposable
         GenerateBuffer(_baseFrequency, _waveform);
         _al.SourcePlay(_source);
 
-        string name = _waveform switch { 0 => "sine", 1 => "square", 2 => "saw", 3 => "triangle", _ => "?" };
+        var name = _waveform switch { 0 => "sine", 1 => "square", 2 => "saw", 3 => "triangle", _ => "?" };
         Emscripten.ConsoleLog($"[OpenAL] Waveform switched to {name}");
     }
 
@@ -111,7 +111,7 @@ public unsafe class AudioPlayer : IDisposable
         get
         {
             if (_source == 0) return false;
-            _al.GetSourceProperty(_source, GetSourceInteger.SourceState, out int state);
+            _al.GetSourceProperty(_source, GetSourceInteger.SourceState, out var state);
             return state == 0x1012; // AL_PLAYING
         }
     }

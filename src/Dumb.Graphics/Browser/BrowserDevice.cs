@@ -4,7 +4,7 @@ namespace Dumb.Graphics.Browser;
 
 internal sealed unsafe class BrowserDeviceBackend : IDeviceBackend
 {
-    readonly Dumb.Emscripten.WGPUBrowser _wgpu;
+    private readonly Dumb.Emscripten.WGPUBrowser _wgpu;
 
     public BrowserDeviceBackend(Dumb.Emscripten.WGPUBrowser wgpu) => _wgpu = wgpu;
 

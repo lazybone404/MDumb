@@ -109,7 +109,7 @@ public static partial class Emscripten
     {
         var handle = GCHandle.Alloc(Encoding.UTF8.GetBytes(target + '\0'), GCHandleType.Pinned);
         double w, h;
-        int result = emscripten_get_element_css_size((byte*)handle.AddrOfPinnedObject(), &w, &h);
+        var result = emscripten_get_element_css_size((byte*)handle.AddrOfPinnedObject(), &w, &h);
         handle.Free();
         width = (int)w;
         height = (int)h;

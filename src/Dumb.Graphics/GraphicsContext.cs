@@ -26,6 +26,8 @@ public class GraphicsContext : IDisposable
     internal readonly IEntityHost<HList<PipelineLayoutData, EmptyHList>> _pipelineLayouts;
     internal readonly IEntityHost<HList<RenderPipelineData, EmptyHList>> _renderPipelines;
     internal readonly IEntityHost<HList<ComputePipelineData, EmptyHList>> _computePipelines;
+    internal readonly IEntityHost<HList<MeshResourceData, EmptyHList>> _meshes;
+    internal readonly IEntityHost<HList<MaterialResourceData, EmptyHList>> _materials;
 
     internal nint NativeInstance;
     internal nint NativeAdapter;
@@ -41,7 +43,7 @@ public class GraphicsContext : IDisposable
     internal readonly WebGPU _wgpu;
 #endif
 
-    bool _disposed;
+    private bool _disposed;
 
     public GraphicsContext()
     {
@@ -55,6 +57,8 @@ public class GraphicsContext : IDisposable
         _pipelineLayouts = _world.AcquireHost<HList<PipelineLayoutData, EmptyHList>, ArrayEntityHost<HList<PipelineLayoutData, EmptyHList>>>();
         _renderPipelines = _world.AcquireHost<HList<RenderPipelineData, EmptyHList>, ArrayEntityHost<HList<RenderPipelineData, EmptyHList>>>();
         _computePipelines = _world.AcquireHost<HList<ComputePipelineData, EmptyHList>, ArrayEntityHost<HList<ComputePipelineData, EmptyHList>>>();
+        _meshes = _world.AcquireHost<HList<MeshResourceData, EmptyHList>, ArrayEntityHost<HList<MeshResourceData, EmptyHList>>>();
+        _materials = _world.AcquireHost<HList<MaterialResourceData, EmptyHList>, ArrayEntityHost<HList<MaterialResourceData, EmptyHList>>>();
 
 #if BROWSER
         _wgpu = new WGPUBrowser();
@@ -74,11 +78,8 @@ public class GraphicsContext : IDisposable
 #endif
 
     public nint NativeInstanceHandle => NativeInstance;
-
     public nint NativeAdapterHandle => NativeAdapter;
-
     public nint NativeDeviceHandle => NativeDevice;
-
     public nint NativeQueueHandle => NativeQueue;
 
     public Task InitializeAsync(RequestAdapterOptions options, DeviceDescriptor descriptor)
@@ -87,10 +88,10 @@ public class GraphicsContext : IDisposable
         return InitializeInternal(options, descriptor);
     }
 
-    async Task InitializeInternal(RequestAdapterOptions options, DeviceDescriptor descriptor)
+    private async Task InitializeInternal(RequestAdapterOptions options, DeviceDescriptor descriptor)
     {
         if (NativeInstance == 0)
-            NativeInstance = CreateWgpuInstance();
+            unsafe { NativeInstance = Device.CreateInstance(null); }
 
         var adapter = await RequestAdapterAsync(NativeInstance, options).ConfigureAwait(false);
         NativeAdapter = adapter;
@@ -101,9 +102,7 @@ public class GraphicsContext : IDisposable
         NativeQueue = Device.DeviceGetQueue(NativeDevice);
     }
 
-    unsafe nint CreateWgpuInstance() => Device.CreateInstance(null);
-
-    unsafe Task<nint> RequestAdapterAsync(nint instance, RequestAdapterOptions options)
+    private unsafe Task<nint> RequestAdapterAsync(nint instance, RequestAdapterOptions options)
     {
         var tcs = new TaskCompletionSource<nint>(TaskCreationOptions.RunContinuationsAsynchronously);
         var handle = GCHandle.Alloc(tcs);
@@ -111,7 +110,7 @@ public class GraphicsContext : IDisposable
         return tcs.Task;
     }
 
-    unsafe Task<nint> RequestDeviceAsync(nint adapter, DeviceDescriptor descriptor)
+    private unsafe Task<nint> RequestDeviceAsync(nint adapter, DeviceDescriptor descriptor)
     {
         var tcs = new TaskCompletionSource<nint>(TaskCreationOptions.RunContinuationsAsynchronously);
         var handle = GCHandle.Alloc(tcs);
@@ -130,26 +129,38 @@ public class GraphicsContext : IDisposable
         if (_disposed) return;
         _disposed = true;
 
-        _computePipelines.ForSlice<ComputePipelineData>(
-            (ref ComputePipelineData cp) => Device.ReleaseComputePipeline(cp.NativePtr));
-        _renderPipelines.ForSlice<RenderPipelineData>(
-            (ref RenderPipelineData rp) => Device.ReleaseRenderPipeline(rp.NativePtr));
-        _pipelineLayouts.ForSlice<PipelineLayoutData>(
-            (ref PipelineLayoutData pl) => Device.ReleasePipelineLayout(pl.NativePtr));
-        _bindGroups.ForSlice<BindGroupData>(
-            (ref BindGroupData bg) => Device.ReleaseBindGroup(bg.NativePtr));
-        _bindGroupLayouts.ForSlice<BindGroupLayoutData>(
-            (ref BindGroupLayoutData bgl) => Device.ReleaseBindGroupLayout(bgl.NativePtr));
-        _shaders.ForSlice<ShaderData>(
-            (ref ShaderData s) => Device.ReleaseShaderModule(s.NativePtr));
-        _samplers.ForSlice<SamplerData>(
-            (ref SamplerData s) => Device.ReleaseSampler(s.NativePtr));
-        _textureViews.ForSlice<TextureViewData>(
-            (ref TextureViewData tv) => Device.ReleaseTextureView(tv.NativePtr));
-        _textures.ForSlice<TextureData>(
-            (ref TextureData t) => Device.ReleaseTexture(t.NativePtr));
-        _buffers.ForSlice<BufferData>(
-            (ref BufferData b) => Device.ReleaseBuffer(b.NativePtr));
+        _computePipelines.ForSlice<ComputePipelineData>((ref ComputePipelineData d) => Device.ReleaseComputePipeline(d.NativePtr));
+        _renderPipelines.ForSlice<RenderPipelineData>((ref RenderPipelineData d) => Device.ReleaseRenderPipeline(d.NativePtr));
+        _pipelineLayouts.ForSlice<PipelineLayoutData>((ref PipelineLayoutData d) => Device.ReleasePipelineLayout(d.NativePtr));
+        _bindGroups.ForSlice<BindGroupData>((ref BindGroupData d) => Device.ReleaseBindGroup(d.NativePtr));
+        _bindGroupLayouts.ForSlice<BindGroupLayoutData>((ref BindGroupLayoutData d) => Device.ReleaseBindGroupLayout(d.NativePtr));
+        _shaders.ForSlice<ShaderData>((ref ShaderData d) => Device.ReleaseShaderModule(d.NativePtr));
+        _samplers.ForSlice<SamplerData>((ref SamplerData d) => Device.ReleaseSampler(d.NativePtr));
+        _textureViews.ForSlice<TextureViewData>((ref TextureViewData d) => Device.ReleaseTextureView(d.NativePtr));
+        _textures.ForSlice<TextureData>((ref TextureData d) => Device.ReleaseTexture(d.NativePtr));
+        _buffers.ForSlice<BufferData>((ref BufferData d) => Device.ReleaseBuffer(d.NativePtr));
+        _meshes.ForSlice<MeshResourceData>((ref MeshResourceData m) =>
+        {
+            foreach (var vb in m.VertexBuffers)
+            {
+                if (vb.Host != null)
+                    Buffers.Release(this, vb);
+            }
+            if (m.IndexBuffer.Host != null)
+                Buffers.Release(this, m.IndexBuffer);
+        });
+        _materials.ForSlice<MaterialResourceData>((ref MaterialResourceData m) =>
+        {
+            if (m.Pipeline.Host != null)
+                Pipelines.ReleaseRenderPipeline(this, m.Pipeline);
+            if (m.PipelineLayout.Host != null)
+                Pipelines.ReleasePipelineLayout(this, m.PipelineLayout);
+            foreach (var bg in m.BindGroups)
+            {
+                if (bg.Host != null)
+                    Pipelines.ReleaseBindGroup(this, bg);
+            }
+        });
 
         _world.Dispose();
 
@@ -159,7 +170,7 @@ public class GraphicsContext : IDisposable
     }
 
     [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
-    static unsafe void AdapterCallback(RequestAdapterStatus status, nint adapter, byte* message, void* userdata)
+    private static unsafe void AdapterCallback(RequestAdapterStatus status, nint adapter, byte* message, void* userdata)
     {
         var handle = GCHandle.FromIntPtr((nint)userdata);
         var tcs = (TaskCompletionSource<nint>)handle.Target!;
@@ -172,7 +183,7 @@ public class GraphicsContext : IDisposable
     }
 
     [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
-    static unsafe void DeviceCallback(RequestDeviceStatus status, nint device, byte* message, void* userdata)
+    private static unsafe void DeviceCallback(RequestDeviceStatus status, nint device, byte* message, void* userdata)
     {
         var handle = GCHandle.FromIntPtr((nint)userdata);
         var tcs = (TaskCompletionSource<nint>)handle.Target!;

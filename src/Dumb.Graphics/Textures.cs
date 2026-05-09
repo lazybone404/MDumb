@@ -67,7 +67,7 @@ public static unsafe class Textures
 
     public static Entity Create(GraphicsContext ctx, TextureDescriptor descriptor)
     {
-        nint native = ctx.Device.CreateTexture(ctx.NativeDevice, &descriptor);
+        var native = ctx.Device.CreateTexture(ctx.NativeDevice, &descriptor);
         return ctx._textures.Create(HList.From(new TextureData
         {
             NativePtr = native,
@@ -118,11 +118,11 @@ public static unsafe class Textures
             Label = null
         };
 
-        nint native = ctx.Device.CreateTextureView(texture, &descriptor);
+        var native = ctx.Device.CreateTextureView(texture, &descriptor);
         return ctx._textureViews.Create(HList.From(new TextureViewData
         {
             NativePtr = native,
-            Texture = default!,
+            Texture = null!,
             RefCount = 1
         }));
     }
@@ -132,7 +132,7 @@ public static unsafe class Textures
         return ctx._textureViews.Create(HList.From(new TextureViewData
         {
             NativePtr = textureView,
-            Texture = default!,
+            Texture = null!,
             RefCount = 1
         }));
     }
@@ -140,7 +140,7 @@ public static unsafe class Textures
     public static Entity CreateView(GraphicsContext ctx, Entity texture, TextureViewDescriptor descriptor)
     {
         ref var tex = ref texture.Get<TextureData>();
-        nint native = ctx.Device.CreateTextureView(tex.NativePtr, &descriptor);
+        var native = ctx.Device.CreateTextureView(tex.NativePtr, &descriptor);
         return ctx._textureViews.Create(HList.From(new TextureViewData
         {
             NativePtr = native,

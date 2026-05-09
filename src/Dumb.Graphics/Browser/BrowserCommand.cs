@@ -5,7 +5,7 @@ namespace Dumb.Graphics.Browser;
 
 internal sealed unsafe class BrowserCommandBackend : ICommandBackend
 {
-    readonly Dumb.Emscripten.WGPUBrowser _wgpu;
+    private readonly Dumb.Emscripten.WGPUBrowser _wgpu;
 
     public BrowserCommandBackend(Dumb.Emscripten.WGPUBrowser wgpu) => _wgpu = wgpu;
 

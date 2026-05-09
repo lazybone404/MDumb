@@ -50,8 +50,8 @@ public static unsafe class GLFWInput
             GLFW.SetScrollCallback(_window, &OnScroll);
         }
 
-        int joystickCount = 0;
-        for (int jid = GLFW.Joystick1; jid <= GLFW.JoystickLast; jid++)
+        var joystickCount = 0;
+        for (var jid = GLFW.Joystick1; jid <= GLFW.JoystickLast; jid++)
         {
             if (!GLFW.JoystickPresent(jid))
                 continue;

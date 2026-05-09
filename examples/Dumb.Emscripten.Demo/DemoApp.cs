@@ -79,16 +79,16 @@ public class DemoApp
 
     private void ApplyInput()
     {
-        float mouseX = _input.MouseX;
-        float mouseY = _input.MouseY;
+        var mouseX = _input.MouseX;
+        var mouseY = _input.MouseY;
 
         // Mouse drag to pan
         if (_input.MouseLeft)
         {
             if (_prevInput.MouseLeft)
             {
-                float dx = (mouseX - _prevMouseX) * _fractal.Zoom * 0.004f;
-                float dy = (mouseY - _prevMouseY) * _fractal.Zoom * 0.004f;
+                var dx = (mouseX - _prevMouseX) * _fractal.Zoom * 0.004f;
+                var dy = (mouseY - _prevMouseY) * _fractal.Zoom * 0.004f;
                 _fractal.CenterX -= dx;
                 _fractal.CenterY += dy;
             }
@@ -97,14 +97,14 @@ public class DemoApp
         // Scroll to zoom
         if (_input.ScrollDelta != 0)
         {
-            float zoomFactor = _input.ScrollDelta > 0 ? 0.85f : 1.15f;
+            var zoomFactor = _input.ScrollDelta > 0 ? 0.85f : 1.15f;
             _fractal.Zoom = Math.Clamp(_fractal.Zoom * zoomFactor, 0.001f, 100f);
-            float hz = 220f + (1f / Math.Max(_fractal.Zoom, 0.1f)) * 440f;
+            var hz = 220f + (1f / Math.Max(_fractal.Zoom, 0.1f)) * 440f;
             _audio.SetFrequency(hz);
         }
 
         // WASD fine pan
-        float panSpeed = _fractal.Zoom * 0.02f;
+        var panSpeed = _fractal.Zoom * 0.02f;
         if (_input.KeyA) _fractal.CenterX -= panSpeed;
         if (_input.KeyD) _fractal.CenterX += panSpeed;
         if (_input.KeyW) _fractal.CenterY += panSpeed;

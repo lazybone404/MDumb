@@ -5,7 +5,7 @@ namespace Dumb.Graphics.Native;
 
 internal sealed unsafe class NativeCommandBackend : ICommandBackend
 {
-    readonly WebGPU _wgpu;
+    private readonly WebGPU _wgpu;
 
     public NativeCommandBackend(WebGPU wgpu) => _wgpu = wgpu;
 
