@@ -39,8 +39,7 @@ public sealed class TransformReactorTests : IDisposable
             new GlobalTransform(Affine3D.Identity)));
 
     private static Quaternion QuaternionFromAxisAngle(Vector3 axis, float radians) =>
-        Quaternion.Normalize(
-            Quaternion.CreateFromAxisAngle(Vector3.Normalize(axis), radians));
+        Quaternion.CreateFromAxisAngle(axis, radians);
 
     private static void Near(float expected, float actual, float eps = Epsilon) =>
         Assert.True(

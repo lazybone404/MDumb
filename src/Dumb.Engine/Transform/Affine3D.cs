@@ -154,8 +154,24 @@ public struct Affine3D : IEquatable<Affine3D>
 
     public static Affine3D FromRotation(Quaternion q)
     {
-        var m = Matrix4x4.CreateFromQuaternion(q);
-        return FromMatrix4x4(m);
+        float xx = q.X * q.X, yy = q.Y * q.Y, zz = q.Z * q.Z;
+        float xy = q.X * q.Y, xz = q.X * q.Z, yz = q.Y * q.Z;
+        float wx = q.W * q.X, wy = q.W * q.Y, wz = q.W * q.Z;
+
+        return new Affine3D
+        {
+            M11 = 1f - 2f * (yy + zz),
+            M12 = 2f * (xy + wz),
+            M13 = 2f * (xz - wy),
+
+            M21 = 2f * (xy - wz),
+            M22 = 1f - 2f * (xx + zz),
+            M23 = 2f * (yz + wx),
+
+            M31 = 2f * (xz + wy),
+            M32 = 2f * (yz - wx),
+            M33 = 1f - 2f * (xx + yy)
+        };
     }
 
     public static Affine3D FromScale(Vector3 s)
@@ -178,10 +194,13 @@ public struct Affine3D : IEquatable<Affine3D>
     public override bool Equals(object? obj) => obj is Affine3D other && Equals(other);
 
     public override int GetHashCode()
-        => HashCode.Combine(
-            HashCode.Combine(M11, M12, M13, M14),
-            HashCode.Combine(M21, M22, M23, M24),
-            HashCode.Combine(M31, M32, M33, M34));
+    {
+        var hash = new HashCode();
+        hash.Add(M11); hash.Add(M12); hash.Add(M13); hash.Add(M14);
+        hash.Add(M21); hash.Add(M22); hash.Add(M23); hash.Add(M24);
+        hash.Add(M31); hash.Add(M32); hash.Add(M33); hash.Add(M34);
+        return hash.ToHashCode();
+    }
 
     public static bool operator ==(Affine3D left, Affine3D right) => left.Equals(right);
 

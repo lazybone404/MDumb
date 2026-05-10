@@ -50,8 +50,7 @@ public sealed class Affine3DTests
         * Matrix4x4.CreateTranslation(translation);
 
     private static Quaternion QuaternionFromAxisAngle(Vector3 axis, float radians) =>
-        Quaternion.Normalize(
-            Quaternion.CreateFromAxisAngle(Vector3.Normalize(axis), radians));
+        Quaternion.CreateFromAxisAngle(axis, radians);
 
     [Fact]
     public void Affine3D_BasicAffineRoundTrip_IsMathematicallyClosed()

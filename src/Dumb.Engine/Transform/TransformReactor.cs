@@ -24,18 +24,11 @@ public class TransformReactor : ReactorBase<TypeUnion<LocalTransform>>
             var parent = lt.Parent;
             var prevParent = lt._prevParent;
 
-            if (parent is { Host: not null })
+            if (parent is { Host: not null } && WouldCreateCycle(entity, parent))
             {
-                try
-                {
-                    AssertNoCycle(entity, parent);
-                }
-                catch
-                {
-                    lt._parent = prevParent;
-                    lt._prevParent = prevParent;
-                    throw;
-                }
+                lt._parent = prevParent;
+                lt._prevParent = prevParent;
+                throw new InvalidOperationException("Setting this parent would create a transform cycle.");
             }
 
             if (prevParent == parent)
@@ -128,6 +121,7 @@ public class TransformReactor : ReactorBase<TypeUnion<LocalTransform>>
     /// </summary>
     private void PropagateGlobal(Entity root)
     {
+        _propagateQueue.EnsureCapacity(_children.Count + 1);
         _propagateQueue.Enqueue(root);
 
         while (_propagateQueue.TryDequeue(out var entity))
@@ -161,14 +155,15 @@ public class TransformReactor : ReactorBase<TypeUnion<LocalTransform>>
         }
     }
 
-    private static void AssertNoCycle(Entity entity, Entity targetParent)
+    private static bool WouldCreateCycle(Entity entity, Entity targetParent)
     {
         var current = targetParent;
         while (current is { Host: not null })
         {
             if (current == entity)
-                throw new InvalidOperationException("Setting this parent would create a transform cycle.");
+                return true;
             current = current.Get<LocalTransform>().Parent;
         }
+        return false;
     }
 }
