@@ -6,27 +6,36 @@ public enum MeshAttribute
 {
     Position,
     Normal,
-    Tangent,
     UV0,
     UV1,
+    Tangent,
     Color,
     BoneWeights,
     BoneIndices
 }
 
-public readonly struct VertexStreamDescriptor(
-    MeshAttribute[] attributes,
-    VertexStepMode stepMode = VertexStepMode.Vertex)
+public readonly record struct VertexElement
 {
-    public readonly MeshAttribute[] Attributes = attributes;
-    public readonly VertexStepMode StepMode = stepMode;
+    public MeshAttribute Attribute { get; init; }
+    public uint Location { get; init; }
+
+    public VertexElement(MeshAttribute attribute, uint? location = null)
+    {
+        Attribute = attribute;
+        Location = location ?? (uint)attribute;
+    }
+
+    public static implicit operator VertexElement(MeshAttribute attribute) => new(attribute);
 }
 
-public readonly struct MeshDescriptor(VertexStreamDescriptor[] streams, IndexFormat indexFormat = IndexFormat.Uint32)
-{
-    public readonly VertexStreamDescriptor[] Streams = streams;
-    public readonly IndexFormat IndexFormat = indexFormat;
+public readonly record struct VertexStreamDescriptor(
+    VertexElement[] Elements,
+    VertexStepMode StepMode = VertexStepMode.Vertex);
 
+public readonly record struct MeshDescriptor(
+    VertexStreamDescriptor[] Streams,
+    IndexFormat IndexFormat = IndexFormat.Uint32)
+{
     public static VertexFormat GetVertexFormat(MeshAttribute a) => a switch
     {
         MeshAttribute.Position => VertexFormat.Float32x3,
@@ -37,7 +46,7 @@ public readonly struct MeshDescriptor(VertexStreamDescriptor[] streams, IndexFor
         MeshAttribute.Color => VertexFormat.Float32x4,
         MeshAttribute.BoneWeights => VertexFormat.Float32x4,
         MeshAttribute.BoneIndices => VertexFormat.Uint32x4,
-        _ => VertexFormat.Float32x3
+        _ => throw new ArgumentOutOfRangeException(nameof(a), a, "Unknown MeshAttribute")
     };
 
     public static uint AttributeSize(MeshAttribute a) => a switch
@@ -50,15 +59,14 @@ public readonly struct MeshDescriptor(VertexStreamDescriptor[] streams, IndexFor
         MeshAttribute.Color => 16,
         MeshAttribute.BoneWeights => 16,
         MeshAttribute.BoneIndices => 16,
-        _ => 0
+        _ => throw new ArgumentOutOfRangeException(nameof(a), a, "Unknown MeshAttribute")
     };
 
-    public static uint StreamStride(MeshAttribute[] attributes)
+    public static uint StreamStride(VertexElement[] elements)
     {
         uint stride = 0;
-        foreach (var a in attributes)
-            stride += AttributeSize(a);
+        foreach (var e in elements)
+            stride += AttributeSize(e.Attribute);
         return stride;
     }
-
 }

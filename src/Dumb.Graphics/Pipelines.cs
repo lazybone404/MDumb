@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Text;
 using System.Threading;
 using Sia;
@@ -119,6 +120,23 @@ public readonly struct VertexAttributeLayout
         ShaderLocation = shaderLocation;
         Format = format;
         Offset = offset;
+    }
+}
+
+public readonly record struct VertexBufferLayoutDescriptor
+{
+    public VertexAttributeLayout[] Attributes { get; init; }
+    public ulong Stride { get; init; }
+    public VertexStepMode StepMode { get; init; }
+
+    public VertexBufferLayoutDescriptor(
+        VertexAttributeLayout[] attributes,
+        ulong stride,
+        VertexStepMode stepMode = VertexStepMode.Vertex)
+    {
+        Attributes = attributes;
+        Stride = stride;
+        StepMode = stepMode;
     }
 }
 
@@ -272,6 +290,14 @@ public static unsafe class Pipelines
         ref var pl = ref pipelineLayout.Get<PipelineLayoutData>();
         if (Interlocked.Decrement(ref pl.RefCount) == 0)
         {
+            if (pl.BindGroupLayouts is { } bgls)
+            {
+                foreach (var bgl in bgls)
+                {
+                    if (bgl.Host != null)
+                        ReleaseBindGroupLayout(ctx, bgl);
+                }
+            }
             ctx.Device.ReleasePipelineLayout(pl.NativePtr);
             pipelineLayout.Destroy();
         }
@@ -292,8 +318,7 @@ public static unsafe class Pipelines
             shader,
             layout,
             colorFormat,
-            ReadOnlySpan<VertexAttributeLayout>.Empty,
-            vertexStride: 0,
+            ReadOnlySpan<VertexBufferLayoutDescriptor>.Empty,
             vertexEntryPoint,
             fragmentEntryPoint);
     }
@@ -303,12 +328,11 @@ public static unsafe class Pipelines
         Entity shader,
         Entity layout,
         TextureFormat colorFormat,
-        ReadOnlySpan<VertexAttributeLayout> attributes,
-        ulong vertexStride,
+        ReadOnlySpan<VertexBufferLayoutDescriptor> vertexBuffers,
         string vertexEntryPoint = "vs_main",
         string fragmentEntryPoint = "fs_main")
     {
-        return Render(ctx, shader, layout, colorFormat, null, attributes, vertexStride, null, vertexEntryPoint, fragmentEntryPoint);
+        return Render(ctx, shader, layout, colorFormat, null, vertexBuffers, null, vertexEntryPoint, fragmentEntryPoint);
     }
 
     public static Entity Render(
@@ -317,8 +341,7 @@ public static unsafe class Pipelines
         Entity layout,
         TextureFormat colorFormat,
         TextureFormat? depthFormat,
-        ReadOnlySpan<VertexAttributeLayout> attributes,
-        ulong vertexStride,
+        ReadOnlySpan<VertexBufferLayoutDescriptor> vertexBuffers,
         BlendState? blend = null,
         string vertexEntryPoint = "vs_main",
         string fragmentEntryPoint = "fs_main")
@@ -344,30 +367,38 @@ public static unsafe class Pipelines
         fixed (byte* vsPtr = vsBytes)
         fixed (byte* fsPtr = fsBytes)
         {
-            if (attributes.Length > 0)
+            if (vertexBuffers.Length > 0)
             {
-                Span<VertexAttribute> nativeAttributes = stackalloc VertexAttribute[attributes.Length];
-                Span<VertexBufferLayout> vertexBuffers = stackalloc VertexBufferLayout[1];
-                fixed (VertexAttribute* naPtr = nativeAttributes)
-                fixed (VertexBufferLayout* vbPtr = vertexBuffers)
+                var totalAttrs = vertexBuffers.ToArray().Sum(static vb => vb.Attributes.Length);
+                Span<VertexAttribute> allNativeAttrs = stackalloc VertexAttribute[totalAttrs];
+                Span<VertexBufferLayout> nativeBuffers = stackalloc VertexBufferLayout[vertexBuffers.Length];
+
+                fixed (VertexAttribute* attrPtr = allNativeAttrs)
+                fixed (VertexBufferLayout* bufPtr = nativeBuffers)
                 {
-                    for (var i = 0; i < attributes.Length; i++)
+                    var attrOff = 0;
+                    for (var i = 0; i < vertexBuffers.Length; i++)
                     {
-                        naPtr[i] = new VertexAttribute
+                        var desc = vertexBuffers[i];
+                        for (var j = 0; j < desc.Attributes.Length; j++)
                         {
-                            ShaderLocation = attributes[i].ShaderLocation,
-                            Format = attributes[i].Format,
-                            Offset = attributes[i].Offset
+                            attrPtr[attrOff + j] = new VertexAttribute
+                            {
+                                ShaderLocation = desc.Attributes[j].ShaderLocation,
+                                Format = desc.Attributes[j].Format,
+                                Offset = desc.Attributes[j].Offset
+                            };
+                        }
+                        bufPtr[i] = new VertexBufferLayout
+                        {
+                            ArrayStride = desc.Stride,
+                            StepMode = desc.StepMode,
+                            AttributeCount = (nuint)desc.Attributes.Length,
+                            Attributes = attrPtr + attrOff
                         };
+                        attrOff += desc.Attributes.Length;
                     }
-                    vbPtr[0] = new VertexBufferLayout
-                    {
-                        ArrayStride = vertexStride,
-                        StepMode = VertexStepMode.Vertex,
-                        AttributeCount = (nuint)attributes.Length,
-                        Attributes = naPtr
-                    };
-                    return RenderCore(ctx, shader, layout, colorFormat, vsPtr, fsPtr, vbPtr, 1, bsPtr, dsPtr);
+                    return RenderCore(ctx, shader, layout, colorFormat, vsPtr, fsPtr, bufPtr, (uint)vertexBuffers.Length, bsPtr, dsPtr);
                 }
             }
             return RenderCore(ctx, shader, layout, colorFormat, vsPtr, fsPtr, null, 0, bsPtr, dsPtr);
@@ -480,8 +511,7 @@ public static unsafe class Pipelines
         Entity layout,
         ReadOnlySpan<TextureFormat> colorFormats,
         TextureFormat? depthFormat,
-        ReadOnlySpan<VertexAttributeLayout> attributes,
-        ulong vertexStride,
+        ReadOnlySpan<VertexBufferLayoutDescriptor> vertexBuffers,
         BlendState? blend = null,
         string vertexEntryPoint = "vs_main",
         string fragmentEntryPoint = "fs_main")
@@ -516,34 +546,41 @@ public static unsafe class Pipelines
                 };
             }
 
-            Span<VertexAttribute> nativeAttributes = stackalloc VertexAttribute[attributes.Length];
-            Span<VertexBufferLayout> vertexBuffers = stackalloc VertexBufferLayout[attributes.Length > 0 ? 1 : 0];
-
             VertexBufferLayout* vbPtr = null;
             uint vbCount = 0;
-            if (attributes.Length > 0)
+            if (vertexBuffers.Length > 0)
             {
-                fixed (VertexAttribute* naPtr = nativeAttributes)
-                fixed (VertexBufferLayout* vblPtr = vertexBuffers)
+                var totalAttrs = vertexBuffers.ToArray().Sum(static vb => vb.Attributes.Length);
+                Span<VertexAttribute> allNativeAttrs = stackalloc VertexAttribute[totalAttrs];
+                Span<VertexBufferLayout> nativeBuffers = stackalloc VertexBufferLayout[vertexBuffers.Length];
+
+                fixed (VertexAttribute* attrPtr = allNativeAttrs)
+                fixed (VertexBufferLayout* bufPtr = nativeBuffers)
                 {
-                    for (var i = 0; i < attributes.Length; i++)
+                    var attrOff = 0;
+                    for (var i = 0; i < vertexBuffers.Length; i++)
                     {
-                        naPtr[i] = new VertexAttribute
+                        var desc = vertexBuffers[i];
+                        for (var j = 0; j < desc.Attributes.Length; j++)
                         {
-                            ShaderLocation = attributes[i].ShaderLocation,
-                            Format = attributes[i].Format,
-                            Offset = attributes[i].Offset
+                            attrPtr[attrOff + j] = new VertexAttribute
+                            {
+                                ShaderLocation = desc.Attributes[j].ShaderLocation,
+                                Format = desc.Attributes[j].Format,
+                                Offset = desc.Attributes[j].Offset
+                            };
+                        }
+                        bufPtr[i] = new VertexBufferLayout
+                        {
+                            ArrayStride = desc.Stride,
+                            StepMode = desc.StepMode,
+                            AttributeCount = (nuint)desc.Attributes.Length,
+                            Attributes = attrPtr + attrOff
                         };
+                        attrOff += desc.Attributes.Length;
                     }
-                    vblPtr[0] = new VertexBufferLayout
-                    {
-                        ArrayStride = vertexStride,
-                        StepMode = VertexStepMode.Vertex,
-                        AttributeCount = (nuint)attributes.Length,
-                        Attributes = naPtr
-                    };
-                    vbPtr = vblPtr;
-                    vbCount = 1;
+                    vbPtr = bufPtr;
+                    vbCount = (uint)vertexBuffers.Length;
                 }
             }
 

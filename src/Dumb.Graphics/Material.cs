@@ -1,4 +1,3 @@
-using Dumb.Engine.Mesh;
 using Sia;
 using Silk.NET.WebGPU;
 
@@ -7,7 +6,7 @@ namespace Dumb.Graphics;
 public interface IMaterial
 {
     public static abstract string Name { get; }
-    public static abstract MeshDescriptor VertexDescriptor { get; }
+    public static abstract Engine.Mesh.MeshDescriptor VertexDescriptor { get; }
     public static abstract BindingLayout[][] BindGroupLayouts { get; }
     public static virtual BlendState? Blend => null;
     public static virtual DepthStencilState? DepthStencil => null;
@@ -24,7 +23,6 @@ public static class Material
     {
         var shader = material.GetShader(ctx);
 
-        // Build bind group layouts from static descriptor
         var bglDescs = T.BindGroupLayouts;
         var bglEntities = new Entity[bglDescs.Length];
         for (var i = 0; i < bglDescs.Length; i++)
@@ -32,13 +30,8 @@ public static class Material
 
         var pipelineLayout = Pipelines.Layout(ctx, bglEntities);
 
-        // Build vertex attribute layouts from the vertex descriptor
-        var vertDesc = T.VertexDescriptor;
-        var attrLayouts = Mesh.ToVertexAttributeLayouts(
-            vertDesc.Streams[0].Attributes);
-        var vertexStride = MeshDescriptor.StreamStride(vertDesc.Streams[0].Attributes);
+        var bufferLayouts = Mesh.ToVertexBufferLayouts(T.VertexDescriptor.Streams);
 
-        // Create pipeline (MRT if multiple color formats)
         var colorFormats = T.ColorFormats;
         Entity pipeline;
         if (colorFormats.Length == 1)
@@ -47,7 +40,7 @@ public static class Material
                 ctx, shader, pipelineLayout,
                 colorFormats[0],
                 TextureFormat.Depth32float,
-                attrLayouts, vertexStride,
+                bufferLayouts,
                 T.Blend);
         }
         else
@@ -56,7 +49,7 @@ public static class Material
                 ctx, shader, pipelineLayout,
                 colorFormats,
                 TextureFormat.Depth32float,
-                attrLayouts, vertexStride,
+                bufferLayouts,
                 T.Blend);
         }
 
