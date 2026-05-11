@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using Dumb.Engine.Mesh;
 using Sia;
 using Silk.NET.WebGPU;
 #if BROWSER
@@ -14,19 +15,109 @@ using Dumb.Engine.Window;
 
 namespace Dumb.Graphics.Example;
 
-[StructLayout(LayoutKind.Sequential)]
-internal struct ExampleVertex(float x, float y, float r, float g, float b)
+internal struct FlatColorMaterial : IMaterial
 {
-    public Vector2 Position = new(x, y);
-    public Vector3 Color = new(r, g, b);
+    public Entity CameraBuffer;
+    public Entity FrameBuffer;
+    public Entity ComputeBuffer;
+
+    private Entity? _cachedShader;
+
+    public static string Name => "FlatColor";
+
+    public static MeshDescriptor VertexDescriptor => new(
+        [new VertexStreamDescriptor([
+            new VertexElement(MeshAttribute.Position, location: 0),
+            new VertexElement(MeshAttribute.Normal, location: 1),
+            new VertexElement(MeshAttribute.Color, location: 2)
+        ])],
+        IndexFormat.Uint32);
+
+    public static BindingLayout[][] BindGroupLayouts =>
+    [
+        [
+            BindingLayout.UniformBuffer(0, ShaderStage.Vertex | ShaderStage.Fragment, 208),
+            BindingLayout.UniformBuffer(1, ShaderStage.Vertex | ShaderStage.Fragment, 16),
+            BindingLayout.StorageBuffer(2, ShaderStage.Fragment, 4 * sizeof(float), readOnly: true),
+        ]
+    ];
+
+    public static TextureFormat[] ColorFormats => [TextureFormat.Rgba8Unorm];
+
+    public Entity GetShader(GraphicsContext ctx)
+    {
+        if (_cachedShader is { Host: not null } s) return s;
+        _cachedShader = Shaders.Wgsl(ctx, FlatColorShader);
+        return _cachedShader!;
+    }
+
+    public Entity?[] CreateBindGroups(GraphicsContext ctx, Entity pipelineLayout)
+    {
+        ref var plData = ref pipelineLayout.Get<PipelineLayoutData>();
+        var bgl0 = plData.BindGroupLayouts?[0]
+            ?? throw new InvalidOperationException("Pipeline layout missing bind group layout 0.");
+
+        var group0 = Pipelines.BindGroup(ctx, bgl0,
+        [
+            Binding.Uniform<CameraUniforms>(0, CameraBuffer),
+            Binding.Uniform<Vector4>(1, FrameBuffer),
+            Binding.Storage<float>(2, ComputeBuffer, 4)
+        ]);
+        return [group0];
+    }
+
+    private const string FlatColorShader = """
+struct CameraUniforms {
+    view_projection: mat4x4f,
+    view: mat4x4f,
+    projection: mat4x4f,
+    camera_position: vec3f,
+    _pad: f32,
 }
 
-[StructLayout(LayoutKind.Sequential)]
-internal struct ExampleUniforms
-{
-    public Vector2 TargetSize;
-    public float Time;
-    public float Pad;
+struct FrameUniforms {
+    time: f32,
+    _pad0: f32,
+    resolution: vec2f,
+}
+
+@group(0) @binding(0) var<uniform> camera: CameraUniforms;
+@group(0) @binding(1) var<uniform> frame: FrameUniforms;
+@group(0) @binding(2) var<storage, read> compute_data: array<f32>;
+
+struct VertexInput {
+    @location(0) position: vec3f,
+    @location(1) normal: vec3f,
+    @location(2) color: vec4f,
+}
+
+struct VertexOutput {
+    @builtin(position) clip_position: vec4f,
+    @location(0) color: vec3f,
+    @location(1) uv: vec2f,
+}
+
+@vertex
+fn vs_main(input: VertexInput) -> VertexOutput {
+    var output: VertexOutput;
+    output.clip_position = camera.view_projection * vec4f(input.position, 1.0);
+    output.color = input.color.rgb;
+    output.uv = input.position.xy * 0.5 + vec2f(0.5, 0.5);
+    return output;
+}
+
+@fragment
+fn fs_main(input: VertexOutput) -> @location(0) vec4f {
+    let pulse = compute_data[0];
+    let radial = distance(input.uv, vec2f(0.5, 0.5));
+    let rings = sin(radial * 52.0 - frame.time * 5.0) * 0.5 + 0.5;
+    let beam = pow(1.0 - abs(input.uv.x - input.uv.y), 3.0);
+    let glow = smoothstep(0.68, 0.05, radial);
+    let base = mix(vec3f(0.035, 0.055, 0.085), input.color, 0.72);
+    let color = base * (0.62 + rings * 0.28) + vec3f(0.15, 0.26, 0.34) * pulse + vec3f(0.20, 0.42, 0.36) * beam * glow;
+    return vec4f(color, 1.0);
+}
+""";
 }
 
 public sealed class GraphicsExampleApp : IDisposable
@@ -36,55 +127,27 @@ public sealed class GraphicsExampleApp : IDisposable
     private const int NativeWidth = 960;
     private const int NativeHeight = 640;
     private const TextureFormat ColorFormat = TextureFormat.Rgba8Unorm;
+    private const TextureFormat DepthFormat = TextureFormat.Depth32float;
 
-    private const string TriangleShader = """
-struct Uniforms {
-    target_size: vec2f,
-    time: f32,
-    pad: f32,
-}
+    private const string ComputeShader = """
+@group(0) @binding(0) var<storage, read_write> values: array<f32>;
 
-@group(0) @binding(0) var<uniform> u: Uniforms;
-@group(0) @binding(1) var<storage, read> compute_data: array<f32>;
-
-struct VertexInput {
-    @location(0) position: vec2f,
-    @location(1) color: vec3f,
-}
-
-struct VertexOutput {
-    @builtin(position) position: vec4f,
-    @location(0) color: vec3f,
-    @location(1) uv: vec2f,
-}
-
-@vertex
-fn vs_main(input: VertexInput) -> VertexOutput {
-    var output: VertexOutput;
-    output.position = vec4f(input.position, 0.0, 1.0);
-    output.color = input.color;
-    output.uv = input.position * 0.5 + vec2f(0.5, 0.5);
-    return output;
-}
-
-@fragment
-fn fs_main(input: VertexOutput) -> @location(0) vec4f {
-    let pulse = compute_data[0];
-    let radial = distance(input.uv, vec2f(0.5, 0.5));
-    let rings = sin(radial * 52.0 - u.time * 5.0) * 0.5 + 0.5;
-    let beam = pow(1.0 - abs(input.uv.x - input.uv.y), 3.0);
-    let glow = smoothstep(0.68, 0.05, radial);
-    let base = mix(vec3f(0.035, 0.055, 0.085), input.color, 0.72);
-    let color = base * (0.62 + rings * 0.28) + vec3f(0.15, 0.26, 0.34) * pulse + vec3f(0.20, 0.42, 0.36) * beam * glow;
-    return vec4f(color, 1.0);
+@compute @workgroup_size(1)
+fn cs_main(@builtin(global_invocation_id) id: vec3u) {
+    if (id.x == 0u) {
+        values[0] = 0.42;
+        values[1] = 0.78;
+        values[2] = 1.0;
+        values[3] = 8.0;
+    }
 }
 """;
 
     private const string TextureShader = """
 struct Uniforms {
-    target_size: vec2f,
     time: f32,
     pad: f32,
+    target_size: vec2f,
 }
 
 @group(0) @binding(0) var render_sampler: sampler;
@@ -143,20 +206,6 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4f {
 }
 """;
 
-    private const string ComputeShader = """
-@group(0) @binding(0) var<storage, read_write> values: array<f32>;
-
-@compute @workgroup_size(1)
-fn cs_main(@builtin(global_invocation_id) id: vec3u) {
-    if (id.x == 0u) {
-        values[0] = 0.42;
-        values[1] = 0.78;
-        values[2] = 1.0;
-        values[3] = 8.0;
-    }
-}
-""";
-
     private readonly GraphicsContext _graphics = new();
 #if BROWSER
     private WGPUBrowser _wgpu = null!;
@@ -167,24 +216,26 @@ fn cs_main(@builtin(global_invocation_id) id: vec3u) {
     private uint _surfaceHeight;
 #else
     private readonly GlfwWindow _window = new(NativeWidth, NativeHeight, "Dumb.Graphics native WebGPU example");
-    private readonly WebGPU _wgpu = null!;
+    private WebGPU _wgpu = null!;
     private unsafe Surface* _surface;
     private TextureFormat _surfaceFormat;
     private uint _surfaceWidth;
     private uint _surfaceHeight;
 #endif
 
-    private Entity _uniformBuffer;
+    private Entity _cameraBuffer;
+    private Entity _frameBuffer;
     private Entity _computeBuffer;
-    private Entity _vertexBuffer;
-    private Entity _indexBuffer;
+    private Entity _mesh;
+    private Entity _material;
     private Entity _computePipeline;
     private Entity _computeBindGroup;
-    private Entity _trianglePipeline;
-    private Entity _triangleBindGroup;
     private Entity _texturePipeline;
     private Entity _textureBindGroup;
+    private Entity _textureUniformBuffer;
     private RenderTexture _renderTarget;
+    private Entity _depthTexture;
+    private Entity _depthView;
     private bool _disposed;
 
 #if BROWSER
@@ -248,22 +299,28 @@ fn cs_main(@builtin(global_invocation_id) id: vec3u) {
 
     private unsafe void CreateSceneResources(TextureFormat presentFormat)
     {
-        var uniforms = new ExampleUniforms
-        {
-            TargetSize = new Vector2(OffscreenWidth, OffscreenHeight),
-            Time = 0.0f
-        };
-
-        _uniformBuffer = Buffers.Uniform(_graphics, uniforms);
+        _cameraBuffer = Buffers.Uniform<CameraUniforms>(_graphics);
+        _frameBuffer = Buffers.Uniform<Vector4>(_graphics);
         _computeBuffer = Buffers.Storage<float>(_graphics, 4, BufferUsage.CopySrc);
-        _vertexBuffer = Buffers.Vertex(_graphics, TriangleVertices());
-        _indexBuffer = Buffers.Index(_graphics, TriangleIndices());
-        var sampler = Samplers.LinearClamp(_graphics);
+
+        var meshData = MeshData.FromVertices(TriangleVertices(), TriangleIndices());
+        _mesh = Mesh.Create(_graphics, meshData);
+
+        var materialDesc = new FlatColorMaterial
+        {
+            CameraBuffer = _cameraBuffer,
+            FrameBuffer = _frameBuffer,
+            ComputeBuffer = _computeBuffer
+        };
+        _material = Material.Create(_graphics, materialDesc);
 
         _renderTarget = Textures.RenderTarget(_graphics, OffscreenWidth, OffscreenHeight, ColorFormat);
+        _depthTexture = Textures.Create2D(_graphics, OffscreenWidth, OffscreenHeight, DepthFormat, TextureUsage.RenderAttachment);
+        _depthView = Textures.CreateView2D(_graphics, _depthTexture, DepthFormat);
+
+        var sampler = Samplers.LinearClamp(_graphics);
 
         var computeShader = Shaders.Wgsl(_graphics, ComputeShader);
-        var triangleShader = Shaders.Wgsl(_graphics, TriangleShader);
         var textureShader = Shaders.Wgsl(_graphics, TextureShader);
 
         var computeLayout = Pipelines.BindGroupLayout(_graphics,
@@ -277,40 +334,20 @@ fn cs_main(@builtin(global_invocation_id) id: vec3u) {
         ]);
         _computePipeline = Pipelines.Compute(_graphics, computeShader, computePipelineLayout);
 
-        var triangleLayout = Pipelines.BindGroupLayout(_graphics,
-        [
-            BindingLayout.UniformBuffer(0, ShaderStage.Vertex | ShaderStage.Fragment, (ulong)sizeof(ExampleUniforms)),
-            BindingLayout.StorageBuffer(1, ShaderStage.Fragment, 4 * sizeof(float), readOnly: true)
-        ]);
-        var trianglePipelineLayout = Pipelines.Layout(_graphics, [triangleLayout]);
-        _triangleBindGroup = Pipelines.BindGroup(_graphics, triangleLayout,
-        [
-            Binding.Uniform<ExampleUniforms>(0, _uniformBuffer),
-            Binding.Storage<float>(1, _computeBuffer, 4)
-        ]);
-        _trianglePipeline = Pipelines.Render(
-            _graphics,
-            triangleShader,
-            trianglePipelineLayout,
-            ColorFormat,
-            [
-                new VertexAttributeLayout(0, VertexFormat.Float32x2, 0),
-                new VertexAttributeLayout(1, VertexFormat.Float32x3, (ulong)sizeof(Vector2))
-            ],
-            (ulong)sizeof(ExampleVertex));
+        _textureUniformBuffer = Buffers.Uniform<Vector4>(_graphics);
 
         var textureLayout = Pipelines.BindGroupLayout(_graphics,
         [
             BindingLayout.Sampler(0, ShaderStage.Fragment),
             BindingLayout.Texture(1, ShaderStage.Fragment),
-            BindingLayout.UniformBuffer(2, ShaderStage.Fragment, (ulong)sizeof(ExampleUniforms))
+            BindingLayout.UniformBuffer(2, ShaderStage.Fragment, 16)
         ]);
         var texturePipelineLayout = Pipelines.Layout(_graphics, [textureLayout]);
         _textureBindGroup = Pipelines.BindGroup(_graphics, textureLayout,
         [
             Binding.Sampler(0, sampler),
             Binding.Texture(1, _renderTarget.View),
-            Binding.Uniform<ExampleUniforms>(2, _uniformBuffer)
+            Binding.Uniform<Vector4>(2, _textureUniformBuffer)
         ]);
         _texturePipeline = Pipelines.Render(_graphics, textureShader, texturePipelineLayout, presentFormat);
     }
@@ -444,12 +481,20 @@ fn cs_main(@builtin(global_invocation_id) id: vec3u) {
 
     private unsafe void RenderFrame(float time)
     {
-        var uniforms = new ExampleUniforms
+        var view = Matrix4x4.CreateRotationZ((float)Math.Sin(time * 0.3) * 0.15f);
+        var proj = Matrix4x4.CreateOrthographicOffCenter(-1, 1, -1, 1, -1, 1);
+        var cameraUniforms = new CameraUniforms
         {
-            TargetSize = new Vector2(OffscreenWidth, OffscreenHeight),
-            Time = time
+            ViewProjection = view * proj,
+            View = view,
+            Projection = proj,
+            CameraPosition = Vector3.Zero
         };
-        Buffers.Write(_graphics, _uniformBuffer, uniforms);
+        Buffers.Write(_graphics, _cameraBuffer, cameraUniforms);
+
+        var frameInfo = new Vector4(time, 0, OffscreenWidth, OffscreenHeight);
+        Buffers.Write(_graphics, _frameBuffer, frameInfo);
+        Buffers.Write(_graphics, _textureUniformBuffer, frameInfo);
 
 #if BROWSER
         var swapChainView = _wgpu.SwapChainGetCurrentTextureView(_swapChain);
@@ -504,20 +549,24 @@ fn cs_main(@builtin(global_invocation_id) id: vec3u) {
 
     private unsafe void DrawTrianglePass(Encoder encoder)
     {
-        var attachment = Commands.ColorAttachment(
+        var colorAttachment = Commands.ColorAttachment(
             _graphics,
             _renderTarget.View,
             new Color { R = 0.06, G = 0.08, B = 0.11, A = 1.0 });
-        var descriptor = Commands.RenderPass(&attachment);
+        var depthAttachment = Commands.DepthStencilAttachment(_graphics, _depthView);
 
+        var colorAttachments = new[] { colorAttachment };
+        var descriptor = Commands.RenderPass(colorAttachments, &depthAttachment);
         using var pass = encoder.BeginRenderPass(&descriptor);
         pass.SetViewport(0, 0, _renderTarget.Width, _renderTarget.Height);
         pass.SetScissorRect(0, 0, _renderTarget.Width, _renderTarget.Height);
-        pass.SetPipeline(_trianglePipeline);
-        pass.SetBindGroup(0, _triangleBindGroup);
-        pass.SetVertexBuffer(0, _vertexBuffer);
-        pass.SetIndexBuffer(_indexBuffer, IndexFormat.Uint32);
-        pass.DrawIndexed(12);
+
+        ref var matData = ref _material.Get<MaterialResourceData>();
+        pass.SetPipeline(matData.Pipeline);
+        if (matData.BindGroups[0] is { Host: not null } bg0)
+            pass.SetBindGroup(0, bg0);
+
+        Mesh.Draw(pass, _mesh);
     }
 
     private unsafe void DrawTexturePass(
@@ -540,17 +589,17 @@ fn cs_main(@builtin(global_invocation_id) id: vec3u) {
         pass.Draw(6);
     }
 
-    private static ExampleVertex[] TriangleVertices() =>
+    private static MeshVertex[] TriangleVertices() =>
     [
-        new(-0.86f, -0.70f, 0.95f, 0.25f, 0.18f),
-        new(0.76f, -0.62f, 0.08f, 0.72f, 0.96f),
-        new(-0.06f, 0.86f, 0.98f, 0.76f, 0.18f),
-        new(-0.58f, -0.12f, 0.22f, 0.88f, 0.72f),
-        new(0.22f, -0.20f, 0.72f, 0.34f, 0.96f),
-        new(-0.18f, 0.52f, 0.96f, 0.92f, 0.48f),
-        new(0.16f, -0.76f, 0.98f, 0.44f, 0.28f),
-        new(0.92f, 0.04f, 0.24f, 0.86f, 0.96f),
-        new(0.42f, 0.74f, 0.96f, 0.88f, 0.24f)
+        new(new Vector3(-0.86f, -0.70f, 0), new Vector3(0, 0, 1), new Vector3(0.95f, 0.25f, 0.18f)),
+        new(new Vector3(0.76f, -0.62f, 0), new Vector3(0, 0, 1), new Vector3(0.08f, 0.72f, 0.96f)),
+        new(new Vector3(-0.06f, 0.86f, 0), new Vector3(0, 0, 1), new Vector3(0.98f, 0.76f, 0.18f)),
+        new(new Vector3(-0.58f, -0.12f, 0), new Vector3(0, 0, 1), new Vector3(0.22f, 0.88f, 0.72f)),
+        new(new Vector3(0.22f, -0.20f, 0), new Vector3(0, 0, 1), new Vector3(0.72f, 0.34f, 0.96f)),
+        new(new Vector3(-0.18f, 0.52f, 0), new Vector3(0, 0, 1), new Vector3(0.96f, 0.92f, 0.48f)),
+        new(new Vector3(0.16f, -0.76f, 0), new Vector3(0, 0, 1), new Vector3(0.98f, 0.44f, 0.28f)),
+        new(new Vector3(0.92f, 0.04f, 0), new Vector3(0, 0, 1), new Vector3(0.24f, 0.86f, 0.96f)),
+        new(new Vector3(0.42f, 0.74f, 0), new Vector3(0, 0, 1), new Vector3(0.96f, 0.88f, 0.24f))
     ];
 
     private static uint[] TriangleIndices() => [0, 1, 2, 3, 4, 5, 6, 7, 8, 1, 7, 4];
