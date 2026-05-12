@@ -10,6 +10,7 @@ using System.Text;
 using Dumb.Emscripten;
 using Dawn = Silk.NET.WebGPU.Extensions.Dawn;
 #else
+using Dumb.Engine.Input;
 using Dumb.Engine.Window;
 #endif
 
@@ -215,7 +216,9 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4f {
     private uint _surfaceWidth;
     private uint _surfaceHeight;
 #else
-    private readonly GlfwWindow _window = new(NativeWidth, NativeHeight, "Dumb.Graphics native WebGPU example");
+    private World _world = null!;
+    private WindowHost _windowHost = null!;
+    private SystemStage _windowStage = null!;
     private WebGPU _wgpu = null!;
     private unsafe Surface* _surface;
     private TextureFormat _surfaceFormat;
@@ -290,6 +293,19 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4f {
         await new TaskCompletionSource().Task;
 #else
         await _graphics.InitializeAsync(adapterOptions, deviceDescriptor);
+
+        _world = new World();
+        _windowHost = _world.CreateWindow(new WindowDescriptor
+        {
+            Width = NativeWidth,
+            Height = NativeHeight,
+            Title = "Dumb.Graphics native WebGPU example"
+        });
+        _windowStage = SystemChain.Empty
+            .Add(() => new WindowSystem(_windowHost))
+            .Add(() => new InputSystem(_windowHost))
+            .CreateStage(_world);
+
         CreateSurface();
         ConfigureSurface();
         CreateSceneResources(_surfaceFormat);
@@ -358,15 +374,17 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4f {
         var clock = Stopwatch.StartNew();
         Console.WriteLine("Dumb.Graphics native example opened a GLFW WebGPU window. Close the window to exit.");
 
-        while (!_window.ShouldClose)
-        {
-            _window.PollEvents();
+        ref var window = ref _windowHost.Entity.Get<Window>();
 
-            if (_window.Width <= 0 || _window.Height <= 0)
+        while (!window.ShouldClose)
+        {
+            _windowStage.Tick();
+
+            if (window.Width <= 0 || window.Height <= 0)
                 continue;
 
-            var width = (uint)_window.Width;
-            var height = (uint)_window.Height;
+            var width = (uint)window.FramebufferWidth;
+            var height = (uint)window.FramebufferHeight;
             if (width != _surfaceWidth || height != _surfaceHeight)
                 ConfigureSurface();
 
@@ -380,7 +398,7 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4f {
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             throw new PlatformNotSupportedException("The native Dumb.Graphics example currently creates a WebGPU surface through GLFW Win32 handles.");
 
-        var hwnd = GlfwGetWin32Window(_window.NativeHandle);
+        var (hwnd, _, hInstance) = _windowHost.Native!.Win32!.Value;
         if (hwnd == 0)
             throw new InvalidOperationException("Failed to get the GLFW Win32 window handle.");
 
@@ -391,7 +409,7 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4f {
                 Next = null,
                 SType = SType.SurfaceDescriptorFromWindowsHwnd
             },
-            Hinstance = (void*)GetModuleHandle(null),
+            Hinstance = (void*)hInstance,
             Hwnd = (void*)hwnd
         };
 
@@ -410,8 +428,8 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4f {
 
     private unsafe void ConfigureSurface()
     {
-        _surfaceWidth = Math.Max(1u, (uint)_window.Width);
-        _surfaceHeight = Math.Max(1u, (uint)_window.Height);
+        _surfaceWidth = Math.Max(1u, (uint)_windowHost.FramebufferWidth);
+        _surfaceHeight = Math.Max(1u, (uint)_windowHost.FramebufferHeight);
 
         var config = new SurfaceConfiguration
         {
@@ -628,16 +646,11 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4f {
             _wgpu.SurfaceRelease(_surface);
             _surface = null;
         }
-        _window.Dispose();
+        _windowStage?.Dispose();
+        _windowHost?.Dispose();
+        _world?.Dispose();
 #endif
         _graphics.Dispose();
     }
 
-#if !BROWSER
-    [DllImport("glfw3", EntryPoint = "glfwGetWin32Window")]
-    private static extern nint GlfwGetWin32Window(nint window);
-
-    [DllImport("kernel32", EntryPoint = "GetModuleHandleW", CharSet = CharSet.Unicode, SetLastError = true)]
-    private static extern nint GetModuleHandle(string? moduleName);
-#endif
 }

@@ -130,6 +130,8 @@ public sealed class InputAction
         InputBindingKind.MouseButton => _input.Mouse.Button((MouseButton)binding.Code).IsPressed ? binding.Scale : 0f,
         InputBindingKind.GamepadButton => _input.Gamepad(binding.Gamepad).Button((GamepadButton)binding.Code).IsPressed ? binding.Scale : 0f,
         InputBindingKind.GamepadAxis => _input.Gamepad(binding.Gamepad).Axis(binding.Code).Value * binding.Scale,
+        InputBindingKind.MousePosition => 0f,
+        InputBindingKind.MouseScroll => 0f,
         _ => 0f
     };
 

@@ -142,6 +142,14 @@ public readonly record struct VertexBufferLayoutDescriptor
 
 public static unsafe class Pipelines
 {
+    private static readonly StencilFaceState DefaultStencilFace = new()
+    {
+        Compare = CompareFunction.Always,
+        FailOp = StencilOperation.Keep,
+        DepthFailOp = StencilOperation.Keep,
+        PassOp = StencilOperation.Keep
+    };
+
     // --- BindGroupLayout ---
 
     public static Entity BindGroupLayout(
@@ -350,7 +358,14 @@ public static unsafe class Pipelines
         DepthStencilState* dsPtr = null;
         if (depthFormat is { } df)
         {
-            ds = new DepthStencilState { Format = df, DepthWriteEnabled = true, DepthCompare = CompareFunction.Less };
+            ds = new DepthStencilState
+            {
+                Format = df,
+                DepthWriteEnabled = true,
+                DepthCompare = CompareFunction.Less,
+                StencilFront = DefaultStencilFace,
+                StencilBack = DefaultStencilFace
+            };
             dsPtr = &ds;
         }
 
@@ -519,7 +534,14 @@ public static unsafe class Pipelines
         DepthStencilState* dsPtr = null;
         if (depthFormat is { } df)
         {
-            var ds = new DepthStencilState { Format = df, DepthWriteEnabled = true, DepthCompare = CompareFunction.Less };
+            var ds = new DepthStencilState
+            {
+                Format = df,
+                DepthWriteEnabled = true,
+                DepthCompare = CompareFunction.Less,
+                StencilFront = DefaultStencilFace,
+                StencilBack = DefaultStencilFace
+            };
             dsPtr = &ds;
         }
 

@@ -4,6 +4,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 #endif
 using Dumb.Engine.Window;
+using Sia;
 using Silk.NET.GLFW;
 using EngineMouseButton = Dumb.Engine.Input.MouseButton;
 using GlfwInputAction = Silk.NET.GLFW.InputAction;
@@ -13,8 +14,14 @@ namespace Dumb.Engine.Input;
 
 public sealed unsafe class GlfwInputBackend : IInputBackend
 {
-    private readonly IWindow _window;
+    private static readonly KeyCode[] KeyCodes = Enum.GetValues<KeyCode>();
+    private static readonly EngineMouseButton[] MouseButtons = Enum.GetValues<EngineMouseButton>();
+    private static readonly GamepadButton[] GamepadButtons = Enum.GetValues<GamepadButton>();
+
+    private readonly WindowHost _windowHost;
     private Vector2 _scrollDelta;
+
+    internal Entity WindowEntity => _windowHost.Entity;
 #if !BROWSER
     private readonly Glfw _glfw;
     private readonly GlfwCallbacks.ScrollCallback _scrollCallback;
@@ -22,15 +29,15 @@ public sealed unsafe class GlfwInputBackend : IInputBackend
     private static readonly Dictionary<nint, GlfwInputBackend> Instances = [];
 #endif
 
-    public GlfwInputBackend(IWindow window)
+    public GlfwInputBackend(WindowHost windowHost)
     {
-        _window = window;
+        _windowHost = windowHost;
 #if !BROWSER
         _glfw = GlfwProvider.GLFW.Value;
         _scrollCallback = OnScroll;
-        _glfw.SetScrollCallback((WindowHandle*)_window.NativeHandle, _scrollCallback);
+        _glfw.SetScrollCallback((WindowHandle*)_windowHost.NativeHandle, _scrollCallback);
 #else
-        var handle = (WindowHandle*)_window.NativeHandle;
+        var handle = (WindowHandle*)_windowHost.NativeHandle;
         Instances[(nint)handle] = this;
         Dumb.Emscripten.GLFW.SetScrollCallback(handle, &OnScroll);
 #endif
@@ -38,7 +45,7 @@ public sealed unsafe class GlfwInputBackend : IInputBackend
 
     public void Update(InputFrame frame)
     {
-        var handle = (WindowHandle*)_window.NativeHandle;
+        var handle = (WindowHandle*)_windowHost.NativeHandle;
         if (handle is null)
             return;
 
@@ -49,7 +56,7 @@ public sealed unsafe class GlfwInputBackend : IInputBackend
 
     private void UpdateKeyboard(InputFrame frame, WindowHandle* handle)
     {
-        foreach (var key in Enum.GetValues<KeyCode>())
+        foreach (var key in KeyCodes)
         {
             if (key == KeyCode.Unknown)
                 continue;
@@ -72,7 +79,7 @@ public sealed unsafe class GlfwInputBackend : IInputBackend
 #endif
         frame.SetMousePosition(new Vector2((float)x, (float)y));
 
-        foreach (var button in Enum.GetValues<EngineMouseButton>())
+        foreach (var button in MouseButtons)
         {
 #if BROWSER
             var pressed = Dumb.Emscripten.GLFW.IsMouseButtonDown(handle, (GlfwMouseButton)(int)button);
@@ -99,7 +106,7 @@ public sealed unsafe class GlfwInputBackend : IInputBackend
                     frame.SetGamepadAxis(gamepad, axis, value);
             }
 
-            foreach (var button in Enum.GetValues<GamepadButton>())
+            foreach (var button in GamepadButtons)
             {
                 if (Dumb.Emscripten.GLFW.TryGetJoystickButton(gamepad, (int)button, out var pressed))
                     frame.SetGamepadButton(gamepad, button, pressed);
@@ -115,7 +122,7 @@ public sealed unsafe class GlfwInputBackend : IInputBackend
 
             int buttonCount;
             var buttons = _glfw.GetJoystickButtons(gamepad, out buttonCount);
-            foreach (var button in Enum.GetValues<GamepadButton>())
+            foreach (var button in GamepadButtons)
             {
                 var index = (int)button;
                 if (buttons is not null && index < buttonCount)
