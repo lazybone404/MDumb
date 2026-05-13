@@ -18,10 +18,9 @@ public sealed unsafe class GlfwInputBackend : IInputBackend
     private static readonly EngineMouseButton[] MouseButtons = Enum.GetValues<EngineMouseButton>();
     private static readonly GamepadButton[] GamepadButtons = Enum.GetValues<GamepadButton>();
 
-    private readonly WindowHost _windowHost;
+    private readonly IWindowBackend _window;
     private Vector2 _scrollDelta;
 
-    internal Entity WindowEntity => _windowHost.Entity;
 #if !BROWSER
     private readonly Glfw _glfw;
     private readonly GlfwCallbacks.ScrollCallback _scrollCallback;
@@ -29,23 +28,23 @@ public sealed unsafe class GlfwInputBackend : IInputBackend
     private static readonly Dictionary<nint, GlfwInputBackend> Instances = [];
 #endif
 
-    public GlfwInputBackend(WindowHost windowHost)
+    public GlfwInputBackend(IWindowBackend window)
     {
-        _windowHost = windowHost;
+        _window = window ?? throw new ArgumentNullException(nameof(window));
 #if !BROWSER
         _glfw = GlfwProvider.GLFW.Value;
         _scrollCallback = OnScroll;
-        _glfw.SetScrollCallback((WindowHandle*)_windowHost.NativeHandle, _scrollCallback);
+        _glfw.SetScrollCallback((WindowHandle*)_window.NativeHandle, _scrollCallback);
 #else
-        var handle = (WindowHandle*)_windowHost.NativeHandle;
+        var handle = (WindowHandle*)_window.NativeHandle;
         Instances[(nint)handle] = this;
         Dumb.Emscripten.GLFW.SetScrollCallback(handle, &OnScroll);
 #endif
     }
 
-    public void Update(InputFrame frame)
+    public void Poll(InputFrame frame)
     {
-        var handle = (WindowHandle*)_windowHost.NativeHandle;
+        var handle = (WindowHandle*)_window.NativeHandle;
         if (handle is null)
             return;
 
@@ -94,13 +93,13 @@ public sealed unsafe class GlfwInputBackend : IInputBackend
 
     private void UpdateGamepads(InputFrame frame)
     {
-        for (var gamepad = 0; gamepad <= 15; gamepad++)
+        for (var gamepad = 0; gamepad < InputFrame.MaxGamepads; gamepad++)
         {
 #if BROWSER
             if (!Dumb.Emscripten.GLFW.JoystickPresent(gamepad))
                 continue;
 
-            for (var axis = 0; axis < 8; axis++)
+            for (var axis = 0; axis < InputFrame.MaxGamepadAxes; axis++)
             {
                 if (Dumb.Emscripten.GLFW.TryGetJoystickAxis(gamepad, axis, out var value))
                     frame.SetGamepadAxis(gamepad, axis, value);
@@ -137,6 +136,18 @@ public sealed unsafe class GlfwInputBackend : IInputBackend
         var delta = _scrollDelta;
         _scrollDelta = Vector2.Zero;
         return delta;
+    }
+
+    public void Dispose()
+    {
+#if !BROWSER
+        var handle = (WindowHandle*)_window.NativeHandle;
+        if (handle is not null)
+            _glfw.SetScrollCallback(handle, null);
+#else
+        var handle = (WindowHandle*)_window.NativeHandle;
+        Instances.Remove((nint)handle);
+#endif
     }
 
 #if BROWSER

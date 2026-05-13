@@ -16,9 +16,9 @@ public readonly record struct Vector2Control(Vector2 Value, Vector2 PreviousValu
 
 public sealed class Keyboard
 {
-    private readonly InputSystem _input;
+    private readonly WindowInput _input;
 
-    internal Keyboard(InputSystem input)
+    internal Keyboard(WindowInput input)
     {
         _input = input;
     }
@@ -35,9 +35,9 @@ public sealed class Keyboard
 
 public sealed class Mouse
 {
-    private readonly InputSystem _input;
+    private readonly WindowInput _input;
 
-    internal Mouse(InputSystem input)
+    internal Mouse(WindowInput input)
     {
         _input = input;
     }
@@ -62,9 +62,9 @@ public sealed class Mouse
 
 public sealed class Gamepad
 {
-    private readonly InputSystem _input;
+    private readonly WindowInput _input;
 
-    internal Gamepad(InputSystem input, int index)
+    internal Gamepad(WindowInput input, int index)
     {
         _input = input;
         Index = index;

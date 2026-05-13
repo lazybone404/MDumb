@@ -10,24 +10,93 @@ public sealed class InputSystem : SystemBase
     private static readonly MouseButton[] MouseButtons = Enum.GetValues<MouseButton>();
     private static readonly GamepadButton[] GamepadButtons = Enum.GetValues<GamepadButton>();
 
-    private readonly GlfwInputBackend _backend;
-    private readonly Dictionary<string, InputAction> _actions = [];
-    private readonly Dictionary<int, Gamepad> _gamepads = [];
-    private bool _initialized;
+    public InputSystem() : base(Matchers.Of<WindowInput, WindowRuntime>()) {}
 
-    public InputSystem(WindowHost host) : base(Matchers.Any)
+    public override void Execute(World world, IEntityQuery query)
     {
-        if (host == null) throw new ArgumentNullException(nameof(host));
-        _backend = new GlfwInputBackend(host);
-        Keyboard = new Keyboard(this);
-        Mouse = new Mouse(this);
+        foreach (var entity in query)
+        {
+            var input = entity.Get<WindowInput>();
+            var runtime = entity.Get<WindowRuntime>();
+
+            input.BeginFrame();
+            runtime.Input.Poll(input.Current);
+            input.Actions.Update(input.Current, input.Previous);
+            
+            if (input.Initialized)
+                EmitEvents(world, entity, input);
+            else
+                input.Initialized = true;
+        }
     }
 
-    internal InputFrame Current { get; } = new();
-    internal InputFrame Previous { get; } = new();
+    private static void EmitEvents(World world, Entity entity, WindowInput input)
+    {
+        var current = input.Current;
+        var previous = input.Previous;
+
+        foreach (var key in KeyCodes)
+        {
+            if (key == KeyCode.Unknown) continue;
+            var prev = previous.IsKeyPressed(key);
+            var curr = current.IsKeyPressed(key);
+            if (prev != curr)
+                world.Send(entity, new KeyEvent(key, curr));
+        }
+
+        foreach (var btn in MouseButtons)
+        {
+            var prev = previous.IsMousePressed(btn);
+            var curr = current.IsMousePressed(btn);
+            if (prev != curr)
+                world.Send(entity, new MouseButtonEvent(btn, curr));
+        }
+
+        if (current.MousePosition != previous.MousePosition)
+            world.Send(entity, new MouseMoveEvent(current.MousePosition, current.MousePosition - previous.MousePosition));
+
+        if (current.MouseScroll != Vector2.Zero)
+            world.Send(entity, new MouseScrollEvent(current.MouseScroll));
+
+        for (var gp = 0; gp < InputFrame.MaxGamepads; gp++)
+        {
+            foreach (var btn in GamepadButtons)
+            {
+                var prev = previous.IsGamepadButtonPressed(gp, btn);
+                var curr = current.IsGamepadButtonPressed(gp, btn);
+                if (prev != curr)
+                    world.Send(entity, new GamepadButtonEvent(gp, btn, curr));
+            }
+
+            for (var axis = 0; axis < InputFrame.MaxGamepadAxes; axis++)
+            {
+                var val = current.ReadGamepadAxis(gp, axis);
+                var pval = previous.ReadGamepadAxis(gp, axis);
+                if (Math.Abs(val - pval) > 0.0001f)
+                    world.Send(entity, new GamepadAxisEvent(gp, axis, val));
+            }
+        }
+    }
+}
+
+public sealed class WindowInput
+{
+    private readonly Dictionary<int, Gamepad> _gamepads = [];
+
+    public InputFrame Current { get; } = new();
+    public InputFrame Previous { get; } = new();
+    public InputActionMap Actions { get; } = new();
 
     public Keyboard Keyboard { get; }
     public Mouse Mouse { get; }
+
+    internal bool Initialized { get; set; }
+
+    public WindowInput()
+    {
+        Keyboard = new Keyboard(this);
+        Mouse = new Mouse(this);
+    }
 
     public Gamepad Gamepad(int index = 0)
     {
@@ -39,79 +108,11 @@ public sealed class InputSystem : SystemBase
         return gamepad;
     }
 
-    public InputAction Action(string name)
-    {
-        if (!_actions.TryGetValue(name, out var action))
-        {
-            action = new InputAction(this, name);
-            _actions.Add(name, action);
-        }
-        return action;
-    }
+    public InputAction Action(string name) => Actions.Action(name);
 
-    public override void Execute(World world, IEntityQuery query)
+    internal void BeginFrame()
     {
         Previous.CopyFrom(Current);
         Current.Clear();
-        _backend.Update(Current);
-
-        if (_initialized)
-            EmitEvents(world);
-        else
-            _initialized = true;
-    }
-
-    private void EmitEvents(World world)
-    {
-        var entity = _backend.WindowEntity;
-        if (!entity.IsValid)
-            return;
-
-        // Keys
-        foreach (var key in KeyCodes)
-        {
-            if (key == KeyCode.Unknown) continue;
-            var prev = Previous.IsKeyPressed(key);
-            var curr = Current.IsKeyPressed(key);
-            if (prev != curr)
-                world.Send(entity, new KeyEvent(key, curr));
-        }
-
-        // Mouse buttons
-        foreach (var btn in MouseButtons)
-        {
-            var prev = Previous.IsMousePressed(btn);
-            var curr = Current.IsMousePressed(btn);
-            if (prev != curr)
-                world.Send(entity, new MouseButtonEvent(btn, curr));
-        }
-
-        // Mouse move
-        if (Current.MousePosition != Previous.MousePosition)
-            world.Send(entity, new MouseMoveEvent(Current.MousePosition, Current.MousePosition - Previous.MousePosition));
-
-        // Mouse scroll
-        if (Current.MouseScroll != Vector2.Zero)
-            world.Send(entity, new MouseScrollEvent(Current.MouseScroll));
-
-        // Gamepads
-        for (var gp = 0; gp < 16; gp++)
-        {
-            foreach (var btn in GamepadButtons)
-            {
-                var prev = Previous.IsGamepadButtonPressed(gp, btn);
-                var curr = Current.IsGamepadButtonPressed(gp, btn);
-                if (prev != curr)
-                    world.Send(entity, new GamepadButtonEvent(gp, btn, curr));
-            }
-
-            for (var axis = 0; axis < 8; axis++)
-            {
-                var val = Current.ReadGamepadAxis(gp, axis);
-                var pval = Previous.ReadGamepadAxis(gp, axis);
-                if (Math.Abs(val - pval) > 0.0001f)
-                    world.Send(entity, new GamepadAxisEvent(gp, axis, val));
-            }
-        }
     }
 }

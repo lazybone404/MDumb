@@ -217,7 +217,7 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4f {
     private uint _surfaceHeight;
 #else
     private World _world = null!;
-    private WindowHost _windowHost = null!;
+    private Entity _window;
     private SystemStage _windowStage = null!;
     private WebGPU _wgpu = null!;
     private unsafe Surface* _surface;
@@ -295,15 +295,15 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4f {
         await _graphics.InitializeAsync(adapterOptions, deviceDescriptor);
 
         _world = new World();
-        _windowHost = _world.CreateWindow(new WindowDescriptor
+        _window = _world.CreateWindow(new WindowDescriptor
         {
             Width = NativeWidth,
             Height = NativeHeight,
             Title = "Dumb.Graphics native WebGPU example"
         });
         _windowStage = SystemChain.Empty
-            .Add(() => new WindowSystem(_windowHost))
-            .Add(() => new InputSystem(_windowHost))
+            .Add<WindowSystem>()
+            .Add<InputSystem>()
             .CreateStage(_world);
 
         CreateSurface();
@@ -374,7 +374,7 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4f {
         var clock = Stopwatch.StartNew();
         Console.WriteLine("Dumb.Graphics native example opened a GLFW WebGPU window. Close the window to exit.");
 
-        ref var window = ref _windowHost.Entity.Get<Window>();
+        ref var window = ref _window.Get<WindowState>();
 
         while (!window.ShouldClose)
         {
@@ -398,7 +398,8 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4f {
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             throw new PlatformNotSupportedException("The native Dumb.Graphics example currently creates a WebGPU surface through GLFW Win32 handles.");
 
-        var (hwnd, _, hInstance) = _windowHost.Native!.Win32!.Value;
+        var runtime = _window.Get<WindowRuntime>();
+        var (hwnd, _, hInstance) = runtime.Native!.Win32!.Value;
         if (hwnd == 0)
             throw new InvalidOperationException("Failed to get the GLFW Win32 window handle.");
 
@@ -428,8 +429,9 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4f {
 
     private unsafe void ConfigureSurface()
     {
-        _surfaceWidth = Math.Max(1u, (uint)_windowHost.FramebufferWidth);
-        _surfaceHeight = Math.Max(1u, (uint)_windowHost.FramebufferHeight);
+        ref var window = ref _window.Get<WindowState>();
+        _surfaceWidth = Math.Max(1u, (uint)window.FramebufferWidth);
+        _surfaceHeight = Math.Max(1u, (uint)window.FramebufferHeight);
 
         var config = new SurfaceConfiguration
         {
@@ -647,7 +649,6 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4f {
             _surface = null;
         }
         _windowStage?.Dispose();
-        _windowHost?.Dispose();
         _world?.Dispose();
 #endif
         _graphics.Dispose();

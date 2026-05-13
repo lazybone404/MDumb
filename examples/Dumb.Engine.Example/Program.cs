@@ -1,7 +1,10 @@
 #if BROWSER
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using Dumb.Engine.Window;
 using EmscriptenApi = Dumb.Emscripten.Emscripten;
+#else
+using Dumb.Engine.Window;
 #endif
 
 namespace Dumb.Engine.Example;
@@ -23,13 +26,21 @@ public static unsafe class Program
             EmscriptenApi.ConsoleLog($"[EngineExample] Canvas CSS size: {cssWidth}x{cssHeight}");
 
         _app = new ExampleApp(
+            new DemoRenderer(CanvasSelector, CanvasWidth, CanvasHeight),
             CanvasWidth,
             CanvasHeight,
-            "Dumb.Engine browser input/audio example",
-            CanvasSelector);
+            "Dumb.Engine browser input/audio example");
+
         EmscriptenApi.RequestAnimationFrameLoop(&Tick, null);
 #else
-        using var app = new ExampleApp(title: "Dumb.Engine native input/audio example");
+        using var app = new ExampleApp(
+            title: "Dumb.Engine native input/audio example");
+
+        // Create desktop renderer after window is ready
+        var window = app.Window;
+        var runtime = window.Get<WindowRuntime>();
+        using var renderer = new DemoRenderer(runtime, 640, 360);
+        app.SetRenderer(renderer);
 
         while (!app.ShouldClose)
         {
@@ -37,7 +48,7 @@ public static unsafe class Program
             if (app.EscapeWasPressed)
                 break;
 
-            Thread.Sleep(16);
+            Thread.Sleep(1);
         }
 #endif
     }

@@ -4,52 +4,50 @@ namespace Dumb.Engine.Window;
 
 public sealed class WindowSystem : SystemBase
 {
-    private readonly WindowHost _host;
-    private bool _initialized;
-    private int _prevWidth, _prevHeight, _prevFbWidth, _prevFbHeight;
-    private bool _prevShouldClose;
-
-    public WindowSystem(WindowHost host) : base(Matchers.Of<Window>())
-    {
-        _host = host ?? throw new ArgumentNullException(nameof(host));
-    }
+    public WindowSystem() : base(Matchers.Of<WindowState, WindowRuntime>()) {}
 
     public override void Execute(World world, IEntityQuery query)
     {
-        if (!_host.Entity.IsValid)
-            return;
-
-        _host.Glfw.PollEvents();
-
-        ref var window = ref _host.Entity.Get<Window>();
-        window.Width = _host.Glfw.Width;
-        window.Height = _host.Glfw.Height;
-        window.FramebufferWidth = _host.Glfw.FramebufferWidth;
-        window.FramebufferHeight = _host.Glfw.FramebufferHeight;
-        window.ShouldClose = _host.Glfw.ShouldClose;
-
-        if (_initialized)
+        foreach (var entity in query)
         {
-            if (window.Width != _prevWidth || window.Height != _prevHeight ||
-                window.FramebufferWidth != _prevFbWidth || window.FramebufferHeight != _prevFbHeight)
+            ref var window = ref entity.Get<WindowState>();
+            var runtime = entity.Get<WindowRuntime>();
+
+            runtime.Window.Pump(runtime.Events);
+
+            if (runtime.Events.ConsumeResize(
+                    out var width,
+                    out var height,
+                    out var framebufferWidth,
+                    out var framebufferHeight))
             {
-                world.Send(_host.Entity, new WindowResizeEvent(
-                    window.Width, window.Height,
-                    window.FramebufferWidth, window.FramebufferHeight));
+                window.Width = width;
+                window.Height = height;
+                window.FramebufferWidth = framebufferWidth;
+                window.FramebufferHeight = framebufferHeight;
+
+                if (runtime.Initialized)
+                    world.Send(entity, new WindowResizeEvent(width, height, framebufferWidth, framebufferHeight));
             }
 
-            if (window.ShouldClose && !_prevShouldClose)
-                world.Send(_host.Entity, new WindowCloseEvent());
-        }
-        else
-        {
-            _initialized = true;
-        }
+            if (runtime.Events.ConsumeCloseRequested() && !window.ShouldClose)
+            {
+                window.ShouldClose = true;
 
-        _prevWidth = window.Width;
-        _prevHeight = window.Height;
-        _prevFbWidth = window.FramebufferWidth;
-        _prevFbHeight = window.FramebufferHeight;
-        _prevShouldClose = window.ShouldClose;
+                if (runtime.Initialized)
+                    world.Send(entity, new WindowCloseEvent());
+            }
+
+            if (!runtime.Initialized)
+                runtime.Initialized = true;
+        }
+    }
+
+    public override void Uninitialize(World world)
+    {
+        world.Query(Matchers.Of<WindowRuntime>(), static entity =>
+        {
+            entity.Get<WindowRuntime>().Dispose();
+        });
     }
 }

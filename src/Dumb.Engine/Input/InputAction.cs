@@ -16,7 +16,8 @@ public readonly record struct InputBinding(
     InputBindingKind Kind,
     int Code,
     int Gamepad = 0,
-    float Scale = 1f)
+    float Scale = 1f,
+    float Threshold = 0.5f)
 {
     public static InputBinding Key(KeyCode key, float scale = 1f) =>
         new(InputBindingKind.Key, (int)key, Scale: scale);
@@ -27,8 +28,8 @@ public readonly record struct InputBinding(
     public static InputBinding GamepadButton(GamepadButton button, int gamepad = 0, float scale = 1f) =>
         new(InputBindingKind.GamepadButton, (int)button, gamepad, scale);
 
-    public static InputBinding GamepadAxis(int axis, int gamepad = 0, float scale = 1f) =>
-        new(InputBindingKind.GamepadAxis, axis, gamepad, scale);
+    public static InputBinding GamepadAxis(int axis, int gamepad = 0, float scale = 1f, float threshold = 0.5f) =>
+        new(InputBindingKind.GamepadAxis, axis, gamepad, scale, threshold);
 
     public static InputBinding MousePosition() =>
         new(InputBindingKind.MousePosition, 0);
@@ -39,12 +40,10 @@ public readonly record struct InputBinding(
 
 public sealed class InputAction
 {
-    private readonly InputSystem _input;
     private readonly List<InputBinding> _bindings = [];
 
-    internal InputAction(InputSystem input, string name)
+    internal InputAction(string name)
     {
-        _input = input;
         Name = name;
     }
 
@@ -52,93 +51,113 @@ public sealed class InputAction
 
     public IReadOnlyList<InputBinding> Bindings => _bindings;
 
+    public bool IsPressed { get; private set; }
+    public bool WasPressedThisFrame { get; private set; }
+    public bool WasReleasedThisFrame { get; private set; }
+    public float Value { get; private set; }
+    public Vector2 Vector2 { get; private set; }
+
     public InputAction AddBinding(InputBinding binding)
     {
         _bindings.Add(binding);
         return this;
     }
 
-    public bool IsPressed()
+    internal void Update(InputFrame current, InputFrame previous)
     {
-        foreach (var binding in _bindings)
-        {
-            if (ReadButton(binding).IsPressed)
-                return true;
-        }
-
-        return false;
-    }
-
-    public bool WasPressedThisFrame()
-    {
-        foreach (var binding in _bindings)
-        {
-            if (ReadButton(binding).WasPressedThisFrame)
-                return true;
-        }
-
-        return false;
-    }
-
-    public bool WasReleasedThisFrame()
-    {
-        foreach (var binding in _bindings)
-        {
-            if (ReadButton(binding).WasReleasedThisFrame)
-                return true;
-        }
-
-        return false;
-    }
-
-    public float ReadValue()
-    {
+        var pressed = false;
+        var wasPressed = false;
+        var wasReleased = false;
         var value = 0f;
+        var vector = Vector2.Zero;
+
         foreach (var binding in _bindings)
-            value += ReadFloat(binding);
-        return value;
+        {
+            var button = ReadButton(binding, current, previous);
+            pressed |= button.IsPressed;
+            wasPressed |= button.WasPressedThisFrame;
+            wasReleased |= button.WasReleasedThisFrame;
+
+            value += ReadFloat(binding, current);
+            vector += ReadVector2(binding, current);
+        }
+
+        IsPressed = pressed;
+        WasPressedThisFrame = wasPressed;
+        WasReleasedThisFrame = wasReleased;
+        Value = value;
+        Vector2 = vector;
     }
 
-    public Vector2 ReadVector2()
+    private static ButtonControl ReadButton(InputBinding binding, InputFrame currentFrame, InputFrame previousFrame)
+        => binding.Kind switch
     {
-        var value = Vector2.Zero;
-        foreach (var binding in _bindings)
-            value += ReadVector2(binding);
-        return value;
-    }
-
-    private ButtonControl ReadButton(InputBinding binding) => binding.Kind switch
-    {
-        InputBindingKind.Key => _input.Keyboard[(KeyCode)binding.Code],
-        InputBindingKind.MouseButton => _input.Mouse.Button((MouseButton)binding.Code),
-        InputBindingKind.GamepadButton => _input.Gamepad(binding.Gamepad).Button((GamepadButton)binding.Code),
-        InputBindingKind.GamepadAxis => AxisAsButton(binding),
+        InputBindingKind.Key => Button(
+            currentFrame.IsKeyPressed((KeyCode)binding.Code),
+            previousFrame.IsKeyPressed((KeyCode)binding.Code)),
+        InputBindingKind.MouseButton => Button(
+            currentFrame.IsMousePressed((MouseButton)binding.Code),
+            previousFrame.IsMousePressed((MouseButton)binding.Code)),
+        InputBindingKind.GamepadButton => Button(
+            currentFrame.IsGamepadButtonPressed(binding.Gamepad, (GamepadButton)binding.Code),
+            previousFrame.IsGamepadButtonPressed(binding.Gamepad, (GamepadButton)binding.Code)),
+        InputBindingKind.GamepadAxis => AxisAsButton(binding, currentFrame, previousFrame),
         _ => default
     };
 
-    private ButtonControl AxisAsButton(InputBinding binding)
+    private static ButtonControl AxisAsButton(InputBinding binding, InputFrame currentFrame, InputFrame previousFrame)
     {
-        var axis = _input.Gamepad(binding.Gamepad).Axis(binding.Code);
-        var current = Math.Abs(axis.Value) > 0.5f;
-        var previous = Math.Abs(axis.PreviousValue) > 0.5f;
-        return new ButtonControl(current, current && !previous, !current && previous);
+        var currentValue = currentFrame.ReadGamepadAxis(binding.Gamepad, binding.Code);
+        var previousValue = previousFrame.ReadGamepadAxis(binding.Gamepad, binding.Code);
+        var current = AxisPressed(currentValue, binding);
+        var previous = AxisPressed(previousValue, binding);
+        return Button(current, previous);
     }
 
-    private float ReadFloat(InputBinding binding) => binding.Kind switch
+    private static bool AxisPressed(float value, InputBinding binding)
+        => binding.Scale >= 0 ? value >= binding.Threshold : value <= -binding.Threshold;
+
+    private static ButtonControl Button(bool current, bool previous)
+        => new(current, current && !previous, !current && previous);
+
+    private static float ReadFloat(InputBinding binding, InputFrame currentFrame) => binding.Kind switch
     {
-        InputBindingKind.Key => _input.Keyboard[(KeyCode)binding.Code].IsPressed ? binding.Scale : 0f,
-        InputBindingKind.MouseButton => _input.Mouse.Button((MouseButton)binding.Code).IsPressed ? binding.Scale : 0f,
-        InputBindingKind.GamepadButton => _input.Gamepad(binding.Gamepad).Button((GamepadButton)binding.Code).IsPressed ? binding.Scale : 0f,
-        InputBindingKind.GamepadAxis => _input.Gamepad(binding.Gamepad).Axis(binding.Code).Value * binding.Scale,
+        InputBindingKind.Key => currentFrame.IsKeyPressed((KeyCode)binding.Code) ? binding.Scale : 0f,
+        InputBindingKind.MouseButton => currentFrame.IsMousePressed((MouseButton)binding.Code) ? binding.Scale : 0f,
+        InputBindingKind.GamepadButton => currentFrame.IsGamepadButtonPressed(binding.Gamepad, (GamepadButton)binding.Code) ? binding.Scale : 0f,
+        InputBindingKind.GamepadAxis => currentFrame.ReadGamepadAxis(binding.Gamepad, binding.Code) * binding.Scale,
         InputBindingKind.MousePosition => 0f,
         InputBindingKind.MouseScroll => 0f,
         _ => 0f
     };
 
-    private Vector2 ReadVector2(InputBinding binding) => binding.Kind switch
+    private static Vector2 ReadVector2(InputBinding binding, InputFrame currentFrame) => binding.Kind switch
     {
-        InputBindingKind.MousePosition => _input.Mouse.Position.Value,
-        InputBindingKind.MouseScroll => _input.Mouse.Scroll,
-        _ => new Vector2(ReadFloat(binding), 0)
+        InputBindingKind.MousePosition => currentFrame.MousePosition,
+        InputBindingKind.MouseScroll => currentFrame.MouseScroll,
+        _ => new Vector2(ReadFloat(binding, currentFrame), 0)
     };
+}
+
+public sealed class InputActionMap
+{
+    private readonly Dictionary<string, InputAction> _actions = [];
+
+    public IReadOnlyDictionary<string, InputAction> Actions => _actions;
+
+    public InputAction Action(string name)
+    {
+        if (!_actions.TryGetValue(name, out var action))
+        {
+            action = new InputAction(name);
+            _actions.Add(name, action);
+        }
+        return action;
+    }
+
+    internal void Update(InputFrame current, InputFrame previous)
+    {
+        foreach (var action in _actions.Values)
+            action.Update(current, previous);
+    }
 }

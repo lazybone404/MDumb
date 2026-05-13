@@ -16,6 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Silk.NET.WebGPU.Native.WGPU" Version="2.23.0" />
     <ProjectReference Include="..\..\src\Dumb.Engine\Dumb.Engine.csproj" />
   </ItemGroup>
 </Project>

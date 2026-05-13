@@ -4,30 +4,50 @@ namespace Dumb.Engine.Input;
 
 public sealed class InputFrame
 {
-    private readonly HashSet<KeyCode> _keys = [];
-    private readonly HashSet<MouseButton> _mouseButtons = [];
-    private readonly Dictionary<(int Gamepad, int Axis), float> _gamepadAxes = [];
-    private readonly HashSet<(int Gamepad, GamepadButton Button)> _gamepadButtons = [];
+    public const int MaxGamepads = 16;
+    public const int MaxGamepadAxes = 8;
+
+    private const int KeyOffset = 1;
+    private const int KeyCapacity = 512;
+
+    private static readonly int MouseButtonCount = Enum.GetValues<MouseButton>().Length;
+    private static readonly int GamepadButtonCount = Enum.GetValues<GamepadButton>().Length;
+
+    private readonly bool[] _keys = new bool[KeyCapacity];
+    private readonly bool[] _mouseButtons = new bool[MouseButtonCount];
+    private readonly float[,] _gamepadAxes = new float[MaxGamepads, MaxGamepadAxes];
+    private readonly bool[,] _gamepadButtons = new bool[MaxGamepads, GamepadButtonCount];
 
     public Vector2 MousePosition { get; private set; }
     public Vector2 MouseScroll { get; private set; }
 
-    public bool IsKeyPressed(KeyCode key) => _keys.Contains(key);
+    public bool IsKeyPressed(KeyCode key)
+    {
+        var index = KeyIndex(key);
+        return index >= 0 && _keys[index];
+    }
 
-    public bool IsMousePressed(MouseButton button) => _mouseButtons.Contains(button);
+    public bool IsMousePressed(MouseButton button)
+    {
+        var index = (int)button;
+        return index >= 0 && index < _mouseButtons.Length && _mouseButtons[index];
+    }
 
     public float ReadGamepadAxis(int gamepad, int axis) =>
-        _gamepadAxes.TryGetValue((gamepad, axis), out var value) ? value : 0f;
+        IsValidGamepad(gamepad) && axis >= 0 && axis < MaxGamepadAxes
+            ? _gamepadAxes[gamepad, axis]
+            : 0f;
 
     public bool IsGamepadButtonPressed(int gamepad, GamepadButton button) =>
-        _gamepadButtons.Contains((gamepad, button));
+        IsValidGamepad(gamepad) && IsValidGamepadButton(button)
+            && _gamepadButtons[gamepad, (int)button];
 
     public void Clear()
     {
-        _keys.Clear();
-        _mouseButtons.Clear();
-        _gamepadAxes.Clear();
-        _gamepadButtons.Clear();
+        Array.Clear(_keys);
+        Array.Clear(_mouseButtons);
+        Array.Clear(_gamepadAxes);
+        Array.Clear(_gamepadButtons);
         MouseScroll = Vector2.Zero;
     }
 
@@ -37,24 +57,24 @@ public sealed class InputFrame
         MousePosition = source.MousePosition;
         MouseScroll = source.MouseScroll;
 
-        foreach (var key in source._keys)
-            _keys.Add(key);
-        foreach (var button in source._mouseButtons)
-            _mouseButtons.Add(button);
-        foreach (var axis in source._gamepadAxes)
-            _gamepadAxes.Add(axis.Key, axis.Value);
-        foreach (var button in source._gamepadButtons)
-            _gamepadButtons.Add(button);
+        Array.Copy(source._keys, _keys, _keys.Length);
+        Array.Copy(source._mouseButtons, _mouseButtons, _mouseButtons.Length);
+        Array.Copy(source._gamepadAxes, _gamepadAxes, _gamepadAxes.Length);
+        Array.Copy(source._gamepadButtons, _gamepadButtons, _gamepadButtons.Length);
     }
 
     public void SetKey(KeyCode key, bool pressed)
     {
-        Set(_keys, key, pressed);
+        var index = KeyIndex(key);
+        if (index >= 0)
+            _keys[index] = pressed;
     }
 
     public void SetMouseButton(MouseButton button, bool pressed)
     {
-        Set(_mouseButtons, button, pressed);
+        var index = (int)button;
+        if (index >= 0 && index < _mouseButtons.Length)
+            _mouseButtons[index] = pressed;
     }
 
     public void SetMousePosition(Vector2 position)
@@ -69,19 +89,25 @@ public sealed class InputFrame
 
     public void SetGamepadAxis(int gamepad, int axis, float value)
     {
-        _gamepadAxes[(gamepad, axis)] = value;
+        if (IsValidGamepad(gamepad) && axis >= 0 && axis < MaxGamepadAxes)
+            _gamepadAxes[gamepad, axis] = value;
     }
 
     public void SetGamepadButton(int gamepad, GamepadButton button, bool pressed)
     {
-        Set(_gamepadButtons, (gamepad, button), pressed);
+        if (IsValidGamepad(gamepad) && IsValidGamepadButton(button))
+            _gamepadButtons[gamepad, (int)button] = pressed;
     }
 
-    private static void Set<T>(HashSet<T> set, T value, bool present)
+    private static int KeyIndex(KeyCode key)
     {
-        if (present)
-            set.Add(value);
-        else
-            set.Remove(value);
+        var index = (int)key + KeyOffset;
+        return index >= 0 && index < KeyCapacity ? index : -1;
     }
+
+    private static bool IsValidGamepad(int gamepad)
+        => gamepad >= 0 && gamepad < MaxGamepads;
+
+    private static bool IsValidGamepadButton(GamepadButton button)
+        => (int)button >= 0 && (int)button < GamepadButtonCount;
 }

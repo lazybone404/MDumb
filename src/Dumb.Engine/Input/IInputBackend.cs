@@ -1,6 +1,6 @@
 namespace Dumb.Engine.Input;
 
-public interface IInputBackend
+public interface IInputBackend : IDisposable
 {
-    void Update(InputFrame frame);
+    void Poll(InputFrame frame);
 }

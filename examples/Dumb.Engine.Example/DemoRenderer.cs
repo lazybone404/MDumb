@@ -1,12 +1,17 @@
-#if BROWSER
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
+#if BROWSER
 using Dumb.Emscripten;
 using EmscriptenApi = Dumb.Emscripten.Emscripten;
+#else
+using Dumb.Engine.Window;
+#endif
 using Silk.NET.WebGPU;
+#if BROWSER
 using Dawn = Silk.NET.WebGPU.Extensions.Dawn;
+#endif
 using WgpuBuffer = Silk.NET.WebGPU.Buffer;
 
 namespace Dumb.Engine.Example;
@@ -28,7 +33,7 @@ internal struct DemoUniforms
     public float Pad;
 }
 
-internal sealed unsafe class BrowserDemoRenderer : IDisposable
+public sealed unsafe class DemoRenderer : IDisposable
 {
     private enum InitState
     {
@@ -58,26 +63,18 @@ struct VertexOutput {
 
 @vertex
 fn vs_main(@builtin(vertex_index) vi: u32) -> VertexOutput {
-    let positions = array<vec2f, 6>(
-        vec2f(-1.0, -1.0),
-        vec2f(1.0, -1.0),
-        vec2f(-1.0, 1.0),
-        vec2f(-1.0, 1.0),
-        vec2f(1.0, -1.0),
-        vec2f(1.0, 1.0)
-    );
-    let uvs = array<vec2f, 6>(
-        vec2f(0.0, 0.0),
-        vec2f(1.0, 0.0),
-        vec2f(0.0, 1.0),
-        vec2f(0.0, 1.0),
-        vec2f(1.0, 0.0),
-        vec2f(1.0, 1.0)
-    );
+    var pos: vec2f;
+    var uv: vec2f;
+    if (vi == 0u)      { pos = vec2f(-1.0, -1.0); uv = vec2f(0.0, 0.0); }
+    else if (vi == 1u) { pos = vec2f(1.0, -1.0);  uv = vec2f(1.0, 0.0); }
+    else if (vi == 2u) { pos = vec2f(-1.0, 1.0);  uv = vec2f(0.0, 1.0); }
+    else if (vi == 3u) { pos = vec2f(-1.0, 1.0);  uv = vec2f(0.0, 1.0); }
+    else if (vi == 4u) { pos = vec2f(1.0, -1.0);  uv = vec2f(1.0, 0.0); }
+    else               { pos = vec2f(1.0, 1.0);   uv = vec2f(1.0, 1.0); }
 
     var output: VertexOutput;
-    output.position = vec4f(positions[vi], 0.0, 1.0);
-    output.uv = uvs[vi];
+    output.position = vec4f(pos, 0.0, 1.0);
+    output.uv = uv;
     return output;
 }
 
@@ -137,10 +134,16 @@ fn fs_main(@location(0) uv: vec2f) -> @location(0) vec4f {
 }
 ";
 
-    private static BrowserDemoRenderer? s_current;
+    private static DemoRenderer? s_current;
 
+#if BROWSER
     private readonly WGPUBrowser _wgpu = new();
     private readonly string _canvasSelector;
+#else
+    private readonly WebGPU _wgpu = WebGPU.GetApi();
+    private readonly WindowRuntime _runtime;
+#endif
+
     private InitState _state = InitState.Idle;
     private bool _disposed;
     private int _width;
@@ -153,7 +156,9 @@ fn fs_main(@location(0) uv: vec2f) -> @location(0) vec4f {
     private Adapter* _adapter;
     private Device* _device;
     private Queue* _queue;
+#if BROWSER
     private Dawn.SwapChain* _swapChain;
+#endif
     private ShaderModule* _shaderModule;
     private RenderPipeline* _pipeline;
     private PipelineLayout* _pipelineLayout;
@@ -161,14 +166,27 @@ fn fs_main(@location(0) uv: vec2f) -> @location(0) vec4f {
     private BindGroup* _bindGroup;
     private WgpuBuffer* _uniformBuffer;
 
-    public BrowserDemoRenderer(string canvasSelector, int width, int height)
+#if BROWSER
+    public DemoRenderer(string canvasSelector, int width, int height)
     {
         _canvasSelector = canvasSelector;
+        Init(width, height);
+    }
+#else
+    public DemoRenderer(WindowRuntime runtime, int width, int height)
+    {
+        _runtime = runtime;
+        Init(width, height);
+    }
+#endif
+
+    private void Init(int width, int height)
+    {
         _width = Math.Max(1, width);
         _height = Math.Max(1, height);
         s_current = this;
 
-        EmscriptenApi.ConsoleLog("[EngineExample/WGPU] Creating instance.");
+        Log("[EngineExample/WGPU] Creating instance.");
         _instance = _wgpu.CreateInstance((InstanceDescriptor*)null);
         _state = _instance == null ? InitState.Failed : InitState.WaitingForSurface;
     }
@@ -197,7 +215,7 @@ fn fs_main(@location(0) uv: vec2f) -> @location(0) vec4f {
         if (!_didFirstRender)
         {
             _didFirstRender = true;
-            EmscriptenApi.ConsoleLog("[EngineExample/WGPU] First curve frame submitted.");
+            Log("[EngineExample/WGPU] First curve frame submitted.");
         }
 
         _time += 1.0 / 60.0;
@@ -217,7 +235,7 @@ fn fs_main(@location(0) uv: vec2f) -> @location(0) vec4f {
         };
         _wgpu.QueueWriteBuffer(_queue, _uniformBuffer, 0, &uniforms, (nuint)sizeof(DemoUniforms));
 
-        var texView = _wgpu.SwapChainGetCurrentTextureView(_swapChain);
+        var texView = GetCurrentTextureView();
         if (texView == null)
             return;
 
@@ -242,7 +260,11 @@ fn fs_main(@location(0) uv: vec2f) -> @location(0) vec4f {
         };
 
         var encoder = _wgpu.DeviceCreateCommandEncoder(_device, null);
+#if BROWSER
         var pass = _wgpu.CommandEncoderBeginRenderPass(encoder, renderPassDesc);
+#else
+        var pass = _wgpu.CommandEncoderBeginRenderPass(encoder, in renderPassDesc);
+#endif
         _wgpu.RenderPassEncoderSetViewport(pass, 0, 0, _width, _height, 0, 1);
         _wgpu.RenderPassEncoderSetPipeline(pass, _pipeline);
         _wgpu.RenderPassEncoderSetBindGroup(pass, 0, _bindGroup, 0, null);
@@ -255,7 +277,8 @@ fn fs_main(@location(0) uv: vec2f) -> @location(0) vec4f {
         _wgpu.CommandEncoderRelease(encoder);
         _wgpu.RenderPassEncoderRelease(pass);
         _wgpu.CommandBufferRelease(cmdBuffer);
-        _wgpu.TextureViewRelease(texView);
+        ReleaseTextureView(texView);
+        PresentSurface();
     }
 
     private void ProgressInit()
@@ -263,7 +286,7 @@ fn fs_main(@location(0) uv: vec2f) -> @location(0) vec4f {
         if (_state != InitState.WaitingForSurface)
             return;
 
-        CreateSurface();
+        _surface = CreateSurface();
         if (_surface == null)
         {
             _state = InitState.Failed;
@@ -278,11 +301,17 @@ fn fs_main(@location(0) uv: vec2f) -> @location(0) vec4f {
             BackendType = BackendType.Undefined,
             ForceFallbackAdapter = false
         };
+#if BROWSER
         _wgpu.InstanceRequestAdapter(_instance, options, &AdapterCallback, null);
+#else
+        _wgpu.InstanceRequestAdapter(
+            _instance, &options, new(&AdapterCallback), null);
+#endif
     }
 
-    private void CreateSurface()
+    private Surface* CreateSurface()
     {
+#if BROWSER
         var selectorBytes = Encoding.UTF8.GetBytes(_canvasSelector + '\0');
         var selectorHandle = GCHandle.Alloc(selectorBytes, GCHandleType.Pinned);
 
@@ -302,12 +331,110 @@ fn fs_main(@location(0) uv: vec2f) -> @location(0) vec4f {
             Label = null
         };
 
-        _surface = _wgpu.InstanceCreateSurface(_instance, surfaceDesc);
+        var surface = _wgpu.InstanceCreateSurface(_instance, surfaceDesc);
         selectorHandle.Free();
-        EmscriptenApi.ConsoleLog(_surface == null
+        Log(surface == null
             ? "[EngineExample/WGPU] Surface creation failed."
             : "[EngineExample/WGPU] Surface ready.");
+        return surface;
+#else
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            throw new PlatformNotSupportedException(
+                "The native Dumb.Engine example currently creates a WebGPU surface through GLFW Win32 handles.");
+
+        var (hwnd, _, hInstance) = _runtime.Native!.Win32!.Value;
+        if (hwnd == 0)
+            throw new InvalidOperationException("Failed to get the GLFW Win32 window handle.");
+
+        var hwndDesc = new SurfaceDescriptorFromWindowsHWND
+        {
+            Chain = new ChainedStruct
+            {
+                Next = null,
+                SType = SType.SurfaceDescriptorFromWindowsHwnd
+            },
+            Hinstance = (void*)hInstance,
+            Hwnd = (void*)hwnd
+        };
+
+        var surfaceDesc = new SurfaceDescriptor
+        {
+            NextInChain = (ChainedStruct*)&hwndDesc,
+            Label = null
+        };
+
+        var surface = _wgpu.InstanceCreateSurface(_instance, in surfaceDesc);
+        Log(surface == null
+            ? "[EngineExample/WGPU] Surface creation failed."
+            : "[EngineExample/WGPU] Surface ready.");
+        return surface;
+#endif
     }
+
+    private void ConfigurePresentSurface()
+    {
+#if BROWSER
+        var format = _wgpu.SurfaceGetPreferredFormat(_surface, _adapter);
+        var desc = new Dawn.SwapChainDescriptor
+        {
+            Usage = TextureUsage.RenderAttachment,
+            Format = format,
+            Width = (uint)_width,
+            Height = (uint)_height,
+            PresentMode = PresentMode.Fifo
+        };
+        _swapChain = _wgpu.DeviceCreateSwapChain(_device, _surface, desc);
+        Log($"[EngineExample/WGPU] SwapChain: 0x{(nint)_swapChain:X}");
+#else
+        var config = new SurfaceConfiguration
+        {
+            Device = _device,
+            Format = TextureFormat.Bgra8Unorm,
+            Usage = TextureUsage.RenderAttachment,
+            ViewFormatCount = 0,
+            ViewFormats = null,
+            AlphaMode = CompositeAlphaMode.Auto,
+            Width = (uint)_width,
+            Height = (uint)_height,
+            PresentMode = PresentMode.Fifo
+        };
+        _wgpu.SurfaceConfigure(_surface, &config);
+        Log("[EngineExample/WGPU] Surface configured.");
+#endif
+    }
+
+    private TextureView* GetCurrentTextureView()
+    {
+#if BROWSER
+        return _wgpu.SwapChainGetCurrentTextureView(_swapChain);
+#else
+        var surfaceTexture = new SurfaceTexture();
+        _wgpu.SurfaceGetCurrentTexture(_surface, &surfaceTexture);
+        if (surfaceTexture.Status != SurfaceGetCurrentTextureStatus.Success ||
+            surfaceTexture.Texture == null)
+        {
+            if (surfaceTexture.Status is SurfaceGetCurrentTextureStatus.Outdated
+                or SurfaceGetCurrentTextureStatus.Lost)
+                ConfigurePresentSurface();
+            return null;
+        }
+        return _wgpu.TextureCreateView(surfaceTexture.Texture, null);
+#endif
+    }
+
+    private void ReleaseTextureView(TextureView* texView)
+    {
+        _wgpu.TextureViewRelease(texView);
+    }
+
+#if BROWSER
+    private void PresentSurface() { /* swapchain auto-presents */ }
+#else
+    private void PresentSurface()
+    {
+        _wgpu.SurfacePresent(_surface);
+    }
+#endif
 
     [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
     private static void AdapterCallback(RequestAdapterStatus status, Adapter* adapter, byte* message, void* userdata)
@@ -329,7 +456,12 @@ fn fs_main(@location(0) uv: vec2f) -> @location(0) vec4f {
             DeviceLostUserdata = null
         };
         self._state = InitState.WaitingForDevice;
+#if BROWSER
         self._wgpu.AdapterRequestDevice(adapter, deviceDesc, &DeviceCallback, null);
+#else
+        self._wgpu.AdapterRequestDevice(
+            adapter, &deviceDesc, new(&DeviceCallback), null);
+#endif
     }
 
     [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
@@ -350,12 +482,12 @@ fn fs_main(@location(0) uv: vec2f) -> @location(0) vec4f {
             (delegate* unmanaged[Cdecl]<ErrorType, byte*, void*, void>)&UncapturedErrorCallback,
             null);
 
-        self.CreateSwapChain();
+        self.ConfigurePresentSurface();
         self.CreateShader();
         self.CreatePipeline();
         self.CreateUniforms();
         self._state = InitState.Ready;
-        EmscriptenApi.ConsoleLog("[EngineExample/WGPU] Renderer ready.");
+        Log("[EngineExample/WGPU] Renderer ready.");
     }
 
     [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
@@ -365,21 +497,7 @@ fn fs_main(@location(0) uv: vec2f) -> @location(0) vec4f {
             return;
 
         var msg = message != null ? Marshal.PtrToStringUTF8((nint)message) : string.Empty;
-        EmscriptenApi.ConsoleLog($"[EngineExample/WGPU] {type}: {msg}");
-    }
-
-    private void CreateSwapChain()
-    {
-        var desc = new Dawn.SwapChainDescriptor
-        {
-            Usage = TextureUsage.RenderAttachment,
-            Format = TextureFormat.Bgra8Unorm,
-            Width = (uint)_width,
-            Height = (uint)_height,
-            PresentMode = PresentMode.Fifo
-        };
-        _swapChain = _wgpu.DeviceCreateSwapChain(_device, _surface, desc);
-        EmscriptenApi.ConsoleLog($"[EngineExample/WGPU] SwapChain: 0x{(nint)_swapChain:X}");
+        Log($"[EngineExample/WGPU] {type}: {msg}");
     }
 
     private void CreateShader()
@@ -405,9 +523,13 @@ fn fs_main(@location(0) uv: vec2f) -> @location(0) vec4f {
             Hints = null
         };
 
+#if BROWSER
         _shaderModule = _wgpu.DeviceCreateShaderModule(_device, shaderDesc);
+#else
+        _shaderModule = _wgpu.DeviceCreateShaderModule(_device, in shaderDesc);
+#endif
         handle.Free();
-        EmscriptenApi.ConsoleLog($"[EngineExample/WGPU] ShaderModule: 0x{(nint)_shaderModule:X}");
+        Log($"[EngineExample/WGPU] ShaderModule: 0x{(nint)_shaderModule:X}");
     }
 
     private void CreatePipeline()
@@ -433,8 +555,12 @@ fn fs_main(@location(0) uv: vec2f) -> @location(0) vec4f {
             Entries = &bglEntry,
             Label = null
         };
+#if BROWSER
         _bindGroupLayout = _wgpu.DeviceCreateBindGroupLayout(_device, bglDesc);
-        EmscriptenApi.ConsoleLog($"[EngineExample/WGPU] BindGroupLayout: 0x{(nint)_bindGroupLayout:X}");
+#else
+        _bindGroupLayout = _wgpu.DeviceCreateBindGroupLayout(_device, in bglDesc);
+#endif
+        Log($"[EngineExample/WGPU] BindGroupLayout: 0x{(nint)_bindGroupLayout:X}");
 
         var bgl = _bindGroupLayout;
         var layoutDesc = new PipelineLayoutDescriptor
@@ -443,7 +569,11 @@ fn fs_main(@location(0) uv: vec2f) -> @location(0) vec4f {
             BindGroupLayouts = &bgl,
             Label = null
         };
+#if BROWSER
         _pipelineLayout = _wgpu.DeviceCreatePipelineLayout(_device, layoutDesc);
+#else
+        _pipelineLayout = _wgpu.DeviceCreatePipelineLayout(_device, in layoutDesc);
+#endif
 
         var vsNameBytes = Encoding.UTF8.GetBytes("vs_main\0");
         var fsNameBytes = Encoding.UTF8.GetBytes("fs_main\0");
@@ -495,10 +625,14 @@ fn fs_main(@location(0) uv: vec2f) -> @location(0) vec4f {
             Label = null
         };
 
+#if BROWSER
         _pipeline = _wgpu.DeviceCreateRenderPipeline(_device, pipelineDesc);
+#else
+        _pipeline = _wgpu.DeviceCreateRenderPipeline(_device, in pipelineDesc);
+#endif
         vsHandle.Free();
         fsHandle.Free();
-        EmscriptenApi.ConsoleLog($"[EngineExample/WGPU] Pipeline: 0x{(nint)_pipeline:X}");
+        Log($"[EngineExample/WGPU] Pipeline: 0x{(nint)_pipeline:X}");
     }
 
     private void CreateUniforms()
@@ -510,8 +644,12 @@ fn fs_main(@location(0) uv: vec2f) -> @location(0) vec4f {
             MappedAtCreation = false,
             Label = null
         };
+#if BROWSER
         _uniformBuffer = _wgpu.DeviceCreateBuffer(_device, bufferDesc);
-        EmscriptenApi.ConsoleLog($"[EngineExample/WGPU] UniformBuffer: 0x{(nint)_uniformBuffer:X}");
+#else
+        _uniformBuffer = _wgpu.DeviceCreateBuffer(_device, in bufferDesc);
+#endif
+        Log($"[EngineExample/WGPU] UniformBuffer: 0x{(nint)_uniformBuffer:X}");
 
         var entry = new BindGroupEntry
         {
@@ -530,24 +668,36 @@ fn fs_main(@location(0) uv: vec2f) -> @location(0) vec4f {
             Entries = &entry,
             Label = null
         };
+#if BROWSER
         _bindGroup = _wgpu.DeviceCreateBindGroup(_device, bindGroupDesc);
-        EmscriptenApi.ConsoleLog($"[EngineExample/WGPU] BindGroup: 0x{(nint)_bindGroup:X}");
+#else
+        _bindGroup = _wgpu.DeviceCreateBindGroup(_device, in bindGroupDesc);
+#endif
+        Log($"[EngineExample/WGPU] BindGroup: 0x{(nint)_bindGroup:X}");
     }
 
     private void Resize(int width, int height)
     {
         _width = Math.Max(1, width);
         _height = Math.Max(1, height);
+#if BROWSER
         if (_swapChain != null)
             _wgpu.SwapChainRelease(_swapChain);
-        CreateSwapChain();
+#endif
+        ConfigurePresentSurface();
     }
 
     private void LogRequestFailure(string target, string status, byte* message)
     {
         var msg = message != null ? Marshal.PtrToStringUTF8((nint)message) : string.Empty;
-        EmscriptenApi.ConsoleLog($"[EngineExample/WGPU] Failed to request {target}: {status} {msg}");
+        Log($"[EngineExample/WGPU] Failed to request {target}: {status} {msg}");
     }
+
+#if BROWSER
+    private static void Log(string msg) => EmscriptenApi.ConsoleLog(msg);
+#else
+    private static void Log(string msg) => Console.WriteLine(msg);
+#endif
 
     public void Dispose()
     {
@@ -561,13 +711,16 @@ fn fs_main(@location(0) uv: vec2f) -> @location(0) vec4f {
         if (_pipeline != null) _wgpu.RenderPipelineRelease(_pipeline);
         if (_shaderModule != null) _wgpu.ShaderModuleRelease(_shaderModule);
         if (_uniformBuffer != null) _wgpu.BufferRelease(_uniformBuffer);
+#if BROWSER
         if (_swapChain != null) _wgpu.SwapChainRelease(_swapChain);
+#endif
         if (_queue != null) _wgpu.QueueRelease(_queue);
         if (_device != null) _wgpu.DeviceRelease(_device);
         if (_adapter != null) _wgpu.AdapterRelease(_adapter);
         if (_surface != null) _wgpu.SurfaceRelease(_surface);
         if (_instance != null) _wgpu.InstanceRelease(_instance);
+#if BROWSER
         _wgpu.Dispose();
+#endif
     }
 }
-#endif
