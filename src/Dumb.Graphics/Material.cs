@@ -77,10 +77,13 @@ public static class Material
         {
             Pipelines.ReleaseRenderPipeline(ctx, data.Pipeline);
             Pipelines.ReleasePipelineLayout(ctx, data.PipelineLayout);
-            foreach (var bg in data.BindGroups)
+            if (data.BindGroups != null)
             {
-                if (bg.Host != null)
-                    Pipelines.ReleaseBindGroup(ctx, bg);
+                foreach (var bg in data.BindGroups)
+                {
+                    if (bg?.Host != null)
+                        Pipelines.ReleaseBindGroup(ctx, bg);
+                }
             }
             material.Destroy();
         }

@@ -13,12 +13,12 @@ public readonly struct BindingLayout
 
     private BindingLayout(BindGroupLayoutEntry entry) => Entry = entry;
 
-    public static BindingLayout UniformBuffer(uint binding, ShaderStage visibility, ulong minBindingSize)
-        => Buffer(binding, visibility, BufferBindingType.Uniform, minBindingSize);
+    public static BindingLayout UniformBuffer(uint binding, ShaderStage visibility, ulong minBindingSize, bool hasDynamicOffset = false)
+        => Buffer(binding, visibility, BufferBindingType.Uniform, minBindingSize, hasDynamicOffset);
 
     public static BindingLayout StorageBuffer(
-        uint binding, ShaderStage visibility, ulong minBindingSize, bool readOnly = false)
-        => Buffer(binding, visibility, readOnly ? BufferBindingType.ReadOnlyStorage : BufferBindingType.Storage, minBindingSize);
+        uint binding, ShaderStage visibility, ulong minBindingSize, bool readOnly = false, bool hasDynamicOffset = false)
+        => Buffer(binding, visibility, readOnly ? BufferBindingType.ReadOnlyStorage : BufferBindingType.Storage, minBindingSize, hasDynamicOffset);
 
     public static BindingLayout Sampler(
         uint binding, ShaderStage visibility, SamplerBindingType type = SamplerBindingType.Filtering)
@@ -47,7 +47,7 @@ public readonly struct BindingLayout
         });
 
     private static BindingLayout Buffer(
-        uint binding, ShaderStage visibility, BufferBindingType type, ulong minBindingSize)
+        uint binding, ShaderStage visibility, BufferBindingType type, ulong minBindingSize, bool hasDynamicOffset = false)
         => new(new BindGroupLayoutEntry
         {
             Binding = binding,
@@ -55,7 +55,7 @@ public readonly struct BindingLayout
             Buffer = new BufferBindingLayout
             {
                 Type = type,
-                HasDynamicOffset = false,
+                HasDynamicOffset = hasDynamicOffset,
                 MinBindingSize = minBindingSize
             }
         });

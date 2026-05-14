@@ -16,6 +16,28 @@ public class GraphicsContext : IDisposable
 {
     internal readonly World _world = new();
 
+    public World World => _world;
+
+    public void AttachToParentWorld(World parentWorld)
+    {
+        var context = _world.AddAddon<SubWorldContext>();
+        context.Parent = parentWorld;
+    }
+
+    public Entity GetFirstPipelineLayout()
+        => _pipelineLayouts.First();
+
+    public Entity CreateMaterialResource(Entity pipeline, Entity pipelineLayout, Entity?[] bindGroups)
+    {
+        return _materials.Create(HList.From(new MaterialResourceData
+        {
+            Pipeline = pipeline,
+            PipelineLayout = pipelineLayout,
+            BindGroups = bindGroups,
+            RefCount = 1
+        }));
+    }
+
     internal readonly IEntityHost<HList<BufferData, EmptyHList>> _buffers;
     internal readonly IEntityHost<HList<TextureData, EmptyHList>> _textures;
     internal readonly IEntityHost<HList<TextureViewData, EmptyHList>> _textureViews;
@@ -155,10 +177,13 @@ public class GraphicsContext : IDisposable
                 Pipelines.ReleaseRenderPipeline(this, m.Pipeline);
             if (m.PipelineLayout.Host != null)
                 Pipelines.ReleasePipelineLayout(this, m.PipelineLayout);
-            foreach (var bg in m.BindGroups)
+            if (m.BindGroups != null)
             {
-                if (bg.Host != null)
-                    Pipelines.ReleaseBindGroup(this, bg);
+                foreach (var bg in m.BindGroups)
+                {
+                    if (bg?.Host != null)
+                        Pipelines.ReleaseBindGroup(this, bg);
+                }
             }
         });
 

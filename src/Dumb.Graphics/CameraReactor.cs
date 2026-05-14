@@ -10,7 +10,7 @@ public sealed class CameraSyncSystem : ExtractSystemBase
     private readonly Dictionary<int, Entity> _buffers = []; // entity ID → GPU buffer
 
     public CameraSyncSystem(GraphicsContext ctx)
-        : base(extractMatcher: Matchers.Of<Engine.Cameras.Camera>())
+        : base(Matchers.Any, extractMatcher: Matchers.Of<Engine.Cameras.Camera>())
     {
         _ctx = ctx;
     }

@@ -127,6 +127,22 @@ public static unsafe class Textures
         }));
     }
 
+    public static Entity CreateDepthView(GraphicsContext ctx, Entity texture, TextureFormat format = TextureFormat.Depth32float)
+    {
+        TextureViewDescriptor descriptor = new()
+        {
+            Format = format,
+            Dimension = TextureViewDimension.Dimension2D,
+            BaseMipLevel = 0,
+            MipLevelCount = 1,
+            BaseArrayLayer = 0,
+            ArrayLayerCount = 1,
+            Aspect = TextureAspect.DepthOnly,
+            Label = null
+        };
+        return CreateView(ctx, texture, descriptor);
+    }
+
     public static Entity WrapNativeTextureView(GraphicsContext ctx, nint textureView)
     {
         return ctx._textureViews.Create(HList.From(new TextureViewData
@@ -149,7 +165,7 @@ public static unsafe class Textures
         }));
     }
 
-    internal static void Release(GraphicsContext ctx, Entity texture)
+    public static void Release(GraphicsContext ctx, Entity texture)
     {
         ref var tex = ref texture.Get<TextureData>();
         if (Interlocked.Decrement(ref tex.RefCount) == 0)
