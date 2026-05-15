@@ -1,9 +1,19 @@
-using System.Runtime.CompilerServices;
-
 namespace Dumb.Engine.Transform;
 
-[method: MethodImpl(MethodImplOptions.AggressiveInlining)]
-public struct GlobalTransform(Affine3D value)
+public struct GlobalTransform
 {
-    public Affine3D Value = value;
+    public Affine3D Value;
+    internal Affine3D _localMatrix;
+
+    public GlobalTransform(Affine3D value)
+    {
+        Value = value;
+        _localMatrix = Affine3D.Identity;
+    }
+
+    public GlobalTransform()
+    {
+        Value = Affine3D.Identity;
+        _localMatrix = Affine3D.Identity;
+    }
 }

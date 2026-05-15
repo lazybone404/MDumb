@@ -14,9 +14,18 @@ public class TransformReactor : ReactorBase<TypeUnion<LocalTransform>>
     {
         base.OnInitialize(world);
 
-        Listen((Entity entity, in LocalTransform.SetPosition cmd) => PropagateGlobal(entity));
-        Listen((Entity entity, in LocalTransform.SetRotation cmd) => PropagateGlobal(entity));
-        Listen((Entity entity, in LocalTransform.SetScale cmd) => PropagateGlobal(entity));
+        Listen((Entity entity, in LocalTransform.SetPosition cmd) => {
+            entity.Get<LocalTransform>()._dirty = true;
+            PropagateGlobal(entity);
+        });
+        Listen((Entity entity, in LocalTransform.SetRotation cmd) => {
+            entity.Get<LocalTransform>()._dirty = true;
+            PropagateGlobal(entity);
+        });
+        Listen((Entity entity, in LocalTransform.SetScale cmd) => {
+            entity.Get<LocalTransform>()._dirty = true;
+            PropagateGlobal(entity);
+        });
 
         Listen((Entity entity, in LocalTransform.SetParent cmd) => {
             ref var lt = ref entity.Get<LocalTransform>();
@@ -33,7 +42,7 @@ public class TransformReactor : ReactorBase<TypeUnion<LocalTransform>>
 
             if (prevParent == parent)
             {
-                ComputeGlobal(entity);
+                lt._dirty = true;
                 PropagateGlobal(entity);
                 return;
             }
@@ -45,8 +54,7 @@ public class TransformReactor : ReactorBase<TypeUnion<LocalTransform>>
                 AddChild(parent, entity);
 
             lt._prevParent = parent;
-
-            ComputeGlobal(entity);
+            lt._dirty = true;
             PropagateGlobal(entity);
         });
     }
@@ -58,17 +66,20 @@ public class TransformReactor : ReactorBase<TypeUnion<LocalTransform>>
         if (!entity.Contains<GlobalTransform>())
             entity.Add(new GlobalTransform(Affine3D.Identity));
 
+        var localMatrix = Affine3D.FromTRS(lt.Position, lt.Rotation, lt.Scale);
+        ref var gt = ref entity.Get<GlobalTransform>();
+        gt._localMatrix = localMatrix;
+
         var parent = lt.Parent;
         if (parent is { Host: not null })
         {
             AddChild(parent, entity);
-            var localMatrix = Affine3D.FromTRS(lt.Position, lt.Rotation, lt.Scale);
             ref var parentGt = ref parent.Get<GlobalTransform>();
-            entity.Get<GlobalTransform>().Value = localMatrix * parentGt.Value;
+            gt.Value = localMatrix * parentGt.Value;
         }
         else
         {
-            entity.Get<GlobalTransform>().Value = Affine3D.FromTRS(lt.Position, lt.Rotation, lt.Scale);
+            gt.Value = localMatrix;
         }
     }
 
@@ -81,7 +92,6 @@ public class TransformReactor : ReactorBase<TypeUnion<LocalTransform>>
 
         if (_children.TryGetValue(entity, out var children))
         {
-            // Copy — child.Destroy() triggers RemoveChild which modifies the set
             var snapshot = children.ToArray();
             children.Clear();
             _childrenPool.Push(children);
@@ -116,43 +126,60 @@ public class TransformReactor : ReactorBase<TypeUnion<LocalTransform>>
         }
     }
 
-    /// <summary>
-    /// Iterative BFS propagation. Each node's global = local_TRS * parent_global.
-    /// </summary>
     private void PropagateGlobal(Entity root)
     {
-        _propagateQueue.EnsureCapacity(_children.Count + 1);
         _propagateQueue.Enqueue(root);
 
         while (_propagateQueue.TryDequeue(out var entity))
         {
-            ComputeGlobal(entity);
+            var changed = ComputeGlobal(entity);
             if (_children.TryGetValue(entity, out var children))
             {
                 foreach (var child in children)
-                    _propagateQueue.Enqueue(child);
+                {
+                    ref var childLt = ref child.Get<LocalTransform>();
+                    if (childLt._dirty || changed)
+                        _propagateQueue.Enqueue(child);
+                }
             }
         }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void ComputeGlobal(Entity entity)
+    private bool ComputeGlobal(Entity entity)
     {
         ref var lt = ref entity.Get<LocalTransform>();
         ref var gt = ref entity.Get<GlobalTransform>();
 
-        var localMatrix = Affine3D.FromTRS(lt.Position, lt.Rotation, lt.Scale);
+        Affine3D localMatrix;
+        if (lt._dirty)
+        {
+            localMatrix = Affine3D.FromTRS(lt.Position, lt.Rotation, lt.Scale);
+            gt._localMatrix = localMatrix;
+            lt._dirty = false;
+        }
+        else
+        {
+            localMatrix = gt._localMatrix;
+        }
 
+        Affine3D newGlobal;
         var parent = lt.Parent;
         if (parent is { Host: not null })
         {
             ref var parentGt = ref parent.Get<GlobalTransform>();
-            gt.Value = localMatrix * parentGt.Value;
+            newGlobal = localMatrix * parentGt.Value;
         }
         else
         {
-            gt.Value = localMatrix;
+            newGlobal = localMatrix;
         }
+
+        if (newGlobal == gt.Value)
+            return false;
+
+        gt.Value = newGlobal;
+        return true;
     }
 
     private static bool WouldCreateCycle(Entity entity, Entity targetParent)
