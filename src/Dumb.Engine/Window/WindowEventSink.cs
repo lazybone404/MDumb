@@ -30,8 +30,7 @@ public sealed class WindowEventSink
         framebufferWidth = _framebufferWidth;
         framebufferHeight = _framebufferHeight;
 
-        if (!_hasResize)
-            return false;
+        if (!_hasResize) return false;
 
         _hasResize = false;
         return true;
@@ -39,8 +38,7 @@ public sealed class WindowEventSink
 
     internal bool ConsumeCloseRequested()
     {
-        if (!_closeRequested)
-            return false;
+        if (!_closeRequested) return false;
 
         _closeRequested = false;
         return true;

@@ -6,8 +6,8 @@ using Silk.NET.GLFW;
 
 public static unsafe class GLFW
 {
-    public const int Joystick1 = 0;
-    public const int JoystickLast = 15;
+    public const int JOYSTICK_FIRST = 0;
+    public const int JOYSTICK_LAST = 15;
 
     public static void Init()
     {

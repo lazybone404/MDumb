@@ -17,8 +17,7 @@ public sealed class WindowRuntime(IWindowBackend window, IInputBackend input) : 
 
     public void Dispose()
     {
-        if (_disposed)
-            return;
+        if (_disposed) return;
 
         _disposed = true;
         Input.Dispose();

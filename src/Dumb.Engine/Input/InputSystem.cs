@@ -4,13 +4,11 @@ using Sia;
 
 namespace Dumb.Engine.Input;
 
-public sealed class InputSystem : SystemBase
+public sealed class InputSystem() : SystemBase(Matchers.Of<WindowInput, WindowRuntime>())
 {
     private static readonly KeyCode[] KeyCodes = Enum.GetValues<KeyCode>();
     private static readonly MouseButton[] MouseButtons = Enum.GetValues<MouseButton>();
     private static readonly GamepadButton[] GamepadButtons = Enum.GetValues<GamepadButton>();
-
-    public InputSystem() : base(Matchers.Of<WindowInput, WindowRuntime>()) {}
 
     public override void Execute(World world, IEntityQuery query)
     {
@@ -58,7 +56,7 @@ public sealed class InputSystem : SystemBase
         if (current.MouseScroll != Vector2.Zero)
             world.Send(entity, new MouseScrollEvent(current.MouseScroll));
 
-        for (var gp = 0; gp < InputFrame.MaxGamepads; gp++)
+        for (var gp = 0; gp < InputFrame.MAX_GAMEPADS; gp++)
         {
             foreach (var btn in GamepadButtons)
             {
@@ -68,7 +66,7 @@ public sealed class InputSystem : SystemBase
                     world.Send(entity, new GamepadButtonEvent(gp, btn, curr));
             }
 
-            for (var axis = 0; axis < InputFrame.MaxGamepadAxes; axis++)
+            for (var axis = 0; axis < InputFrame.MAX_GAMEPAD_AXES; axis++)
             {
                 var val = current.ReadGamepadAxis(gp, axis);
                 var pval = previous.ReadGamepadAxis(gp, axis);

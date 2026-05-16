@@ -4,8 +4,8 @@ namespace Dumb.Engine.Input;
 
 public sealed class InputFrame
 {
-    public const int MaxGamepads = 16;
-    public const int MaxGamepadAxes = 8;
+    public const int MAX_GAMEPADS = 16;
+    public const int MAX_GAMEPAD_AXES = 8;
 
     private const int KeyOffset = 1;
     private const int KeyCapacity = 512;
@@ -15,8 +15,8 @@ public sealed class InputFrame
 
     private readonly bool[] _keys = new bool[KeyCapacity];
     private readonly bool[] _mouseButtons = new bool[MouseButtonCount];
-    private readonly float[,] _gamepadAxes = new float[MaxGamepads, MaxGamepadAxes];
-    private readonly bool[,] _gamepadButtons = new bool[MaxGamepads, GamepadButtonCount];
+    private readonly float[,] _gamepadAxes = new float[MAX_GAMEPADS, MAX_GAMEPAD_AXES];
+    private readonly bool[,] _gamepadButtons = new bool[MAX_GAMEPADS, GamepadButtonCount];
 
     public Vector2 MousePosition { get; private set; }
     public Vector2 MouseScroll { get; private set; }
@@ -34,7 +34,7 @@ public sealed class InputFrame
     }
 
     public float ReadGamepadAxis(int gamepad, int axis) =>
-        IsValidGamepad(gamepad) && axis >= 0 && axis < MaxGamepadAxes
+        IsValidGamepad(gamepad) && axis is >= 0 and < MAX_GAMEPAD_AXES
             ? _gamepadAxes[gamepad, axis]
             : 0f;
 
@@ -89,7 +89,7 @@ public sealed class InputFrame
 
     public void SetGamepadAxis(int gamepad, int axis, float value)
     {
-        if (IsValidGamepad(gamepad) && axis >= 0 && axis < MaxGamepadAxes)
+        if (IsValidGamepad(gamepad) && axis is >= 0 and < MAX_GAMEPAD_AXES)
             _gamepadAxes[gamepad, axis] = value;
     }
 
@@ -102,11 +102,11 @@ public sealed class InputFrame
     private static int KeyIndex(KeyCode key)
     {
         var index = (int)key + KeyOffset;
-        return index >= 0 && index < KeyCapacity ? index : -1;
+        return index is >= 0 and < KeyCapacity ? index : -1;
     }
 
     private static bool IsValidGamepad(int gamepad)
-        => gamepad >= 0 && gamepad < MaxGamepads;
+        => gamepad is >= 0 and < MAX_GAMEPADS;
 
     private static bool IsValidGamepadButton(GamepadButton button)
         => (int)button >= 0 && (int)button < GamepadButtonCount;

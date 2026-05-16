@@ -51,7 +51,7 @@ public static unsafe class GLFWInput
         }
 
         var joystickCount = 0;
-        for (var jid = GLFW.Joystick1; jid <= GLFW.JoystickLast; jid++)
+        for (var jid = GLFW.JOYSTICK_FIRST; jid <= GLFW.JOYSTICK_LAST; jid++)
         {
             if (!GLFW.JoystickPresent(jid))
                 continue;

@@ -2,10 +2,8 @@ using Sia;
 
 namespace Dumb.Engine.Window;
 
-public sealed class WindowSystem : SystemBase
+public sealed class WindowSystem() : SystemBase(Matchers.Of<WindowState, WindowRuntime>())
 {
-    public WindowSystem() : base(Matchers.Of<WindowState, WindowRuntime>()) {}
-
     public override void Execute(World world, IEntityQuery query)
     {
         foreach (var entity in query)

@@ -93,7 +93,7 @@ public sealed unsafe class GlfwInputBackend : IInputBackend
 
     private void UpdateGamepads(InputFrame frame)
     {
-        for (var gamepad = 0; gamepad < InputFrame.MaxGamepads; gamepad++)
+        for (var gamepad = 0; gamepad < InputFrame.MAX_GAMEPADS; gamepad++)
         {
 #if BROWSER
             if (!Dumb.Emscripten.GLFW.JoystickPresent(gamepad))
@@ -114,13 +114,11 @@ public sealed unsafe class GlfwInputBackend : IInputBackend
             if (!_glfw.JoystickPresent(gamepad))
                 continue;
 
-            int axisCount;
-            var axes = _glfw.GetJoystickAxes(gamepad, out axisCount);
+            var axes = _glfw.GetJoystickAxes(gamepad, out var axisCount);
             for (var axis = 0; axes is not null && axis < axisCount; axis++)
                 frame.SetGamepadAxis(gamepad, axis, axes[axis]);
 
-            int buttonCount;
-            var buttons = _glfw.GetJoystickButtons(gamepad, out buttonCount);
+            var buttons = _glfw.GetJoystickButtons(gamepad, out var buttonCount);
             foreach (var button in GamepadButtons)
             {
                 var index = (int)button;

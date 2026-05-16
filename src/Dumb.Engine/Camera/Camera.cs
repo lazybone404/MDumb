@@ -47,10 +47,13 @@ public partial record struct Camera(
 
     public static Camera CreateThirdPerson(Vector3 target, Vector3 offset)
     {
-        var camera = new Camera { Fov = MathF.PI / 3f, NearPlane = 0.1f, FarPlane = 1000f };
-        camera.Position = target + offset;
-        camera.Rotation = Quaternion.CreateFromYawPitchRoll(
-            MathF.Atan2(offset.X, offset.Z), -MathF.Asin(offset.Y / offset.Length()), 0);
+        var camera = new Camera
+        {
+            Fov = MathF.PI / 3f, NearPlane = 0.1f, FarPlane = 1000f,
+            Position = target + offset,
+            Rotation = Quaternion.CreateFromYawPitchRoll(
+                MathF.Atan2(offset.X, offset.Z), -MathF.Asin(offset.Y / offset.Length()), 0)
+        };
         return camera;
     }
 }
