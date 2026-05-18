@@ -8,6 +8,9 @@ public static class Mesh
 {
     public static Entity Create(GraphicsContext ctx, Engine.Mesh.MeshData data)
     {
+        if (!data.TryValidate(out var validationError))
+            throw new InvalidOperationException($"Mesh validation failed: {validationError}");
+
         var desc = data.Descriptor;
         var vertexBuffers = new Entity[data.Streams.Length];
         for (var i = 0; i < data.Streams.Length; i++)
@@ -20,11 +23,12 @@ public static class Mesh
         }
 
         Entity indexBuffer = null!;
-        if (data.Indices is { Length: > 0 })
+        if (!data.Indices.IsEmpty)
         {
-            indexBuffer = Buffers.Create(ctx, (ulong)data.Indices.Length,
+            var indicesSpan = data.Indices.GetSpan();
+            indexBuffer = Buffers.Create(ctx, (ulong)indicesSpan.Length,
                 BufferUsage.Index | BufferUsage.CopyDst);
-            Buffers.Write(ctx, indexBuffer, 0, data.Indices);
+            Buffers.Write(ctx, indexBuffer, 0, indicesSpan);
         }
 
         var subMeshes = data.SubMeshes;
@@ -32,14 +36,9 @@ public static class Mesh
         {
             subMeshes =
             [
-                new Engine.Mesh.SubMesh
-                {
-                    IndexStart = 0,
-                    IndexCount = (uint)data.IndexCount,
-                    VertexStart = 0,
-                    VertexCount = (uint)data.VertexCount,
-                    Topology = PrimitiveTopology.TriangleList
-                }
+                new Engine.Mesh.SubMesh(
+                    0, (uint)data.IndexCount, 0, (uint)data.VertexCount,
+                    PrimitiveTopology.TriangleList)
             ];
         }
 
@@ -133,8 +132,8 @@ public static class Mesh
                 for (var i = 0; i < s.Elements.Length; i++)
                 {
                     var e = s.Elements[i];
-                    var format = Engine.Mesh.MeshDescriptor.GetVertexFormat(e.Attribute);
-                    var size = Engine.Mesh.MeshDescriptor.AttributeSize(e.Attribute);
+                    var format = e.Attribute.Format;
+                    var size = e.Attribute.Size;
                     layouts[i] = new VertexAttributeLayout(e.Location, format, offset);
                     offset += size;
                 }

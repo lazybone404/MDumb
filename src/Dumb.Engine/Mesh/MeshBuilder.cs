@@ -1,16 +1,24 @@
-using System.Numerics;
-
 namespace Dumb.Engine.Mesh;
 
-public sealed class MeshBuilder
+using System.Numerics;
+
+public class MeshBuilder<TVertex>
 {
-    private readonly List<MeshVertex> _vertices = [];
+    private readonly List<TVertex> _vertices = [];
     private readonly List<uint> _indices = [];
+
+    private readonly Func<IReadOnlyList<TVertex>, IReadOnlyList<uint>, MeshData> _build;
+
+    protected MeshBuilder(
+        Func<IReadOnlyList<TVertex>, IReadOnlyList<uint>, MeshData> build)
+    {
+        _build = build;
+    }
 
     public int VertexCount => _vertices.Count;
     public int IndexCount => _indices.Count;
 
-    public uint AddVertex(MeshVertex vertex)
+    public uint AddVertex(TVertex vertex)
     {
         var index = (uint)_vertices.Count;
         _vertices.Add(vertex);
@@ -34,23 +42,27 @@ public sealed class MeshBuilder
         _indices.Add(i3);
     }
 
-    public void AddFace(Vector3 v0, Vector3 v1, Vector3 v2, Vector3 v3, Vector3 normal, Vector3 color)
+    public MeshData Build() => _build(_vertices, _indices);
+
+    public void Clear()
+    {
+        _vertices.Clear();
+        _indices.Clear();
+    }
+}
+
+public sealed class MeshBuilder : MeshBuilder<MeshVertex>
+{
+    public MeshBuilder() : base(MeshData.FromVertices) { }
+
+    public void AddFace(
+        Vector3 v0, Vector3 v1, Vector3 v2, Vector3 v3,
+        Vector3 normal, Vector3 color)
     {
         var i0 = AddVertex(new MeshVertex(v0, normal, color));
         var i1 = AddVertex(new MeshVertex(v1, normal, color));
         var i2 = AddVertex(new MeshVertex(v2, normal, color));
         var i3 = AddVertex(new MeshVertex(v3, normal, color));
         AddQuad(i0, i1, i2, i3);
-    }
-
-    public MeshData Build()
-    {
-        return MeshData.FromVertices(_vertices, _indices);
-    }
-
-    public void Clear()
-    {
-        _vertices.Clear();
-        _indices.Clear();
     }
 }
