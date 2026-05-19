@@ -51,7 +51,8 @@ public sealed class InputSystem() : SystemBase(Matchers.Of<WindowInput, WindowRu
         }
 
         if (current.MousePosition != previous.MousePosition)
-            world.Send(entity, new MouseMoveEvent(current.MousePosition, current.MousePosition - previous.MousePosition));
+            world.Send(entity, new MouseMoveEvent(current.MousePosition,
+                current.MousePosition.Uv - previous.MousePosition.Uv));
 
         if (current.MouseScroll != Vector2.Zero)
             world.Send(entity, new MouseScrollEvent(current.MouseScroll));

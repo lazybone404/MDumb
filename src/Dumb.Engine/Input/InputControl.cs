@@ -42,7 +42,12 @@ public sealed class Mouse
         _input = input;
     }
 
-    public Vector2Control Position => new(_input.Current.MousePosition, _input.Previous.MousePosition);
+    public ScreenPosition Position => _input.Current.MousePosition;
+    public ScreenPosition PreviousPosition => _input.Previous.MousePosition;
+
+    /// <summary>Normalized delta in render space (Y-up, 0-1). Moving up = positive Y.</summary>
+    public Vector2 NormalizedDelta =>
+        _input.Current.MousePosition.Uv - _input.Previous.MousePosition.Uv;
 
     public Vector2 Scroll => _input.Current.MouseScroll;
 

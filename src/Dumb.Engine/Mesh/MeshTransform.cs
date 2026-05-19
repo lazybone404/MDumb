@@ -4,8 +4,17 @@ namespace Dumb.Engine.Mesh;
 
 public static class MeshTransform
 {
+    public static MeshData WithTransform(this MeshData mesh, Vector3 translation, Quaternion rotation, Vector3 scale)
+    {
+        TransformBy(mesh, translation, rotation, scale);
+        return mesh;
+    }
+
     public static void TransformBy(this MeshData mesh, Vector3 translation, Quaternion rotation, Vector3 scale)
     {
+        if (Math.Abs(scale.X) < 1e-10f || Math.Abs(scale.Y) < 1e-10f || Math.Abs(scale.Z) < 1e-10f)
+            throw new ArgumentException($"Scale components must be non-zero, got {scale}", nameof(scale));
+
         var scaleRecip = new Vector3(1f / scale.X, 1f / scale.Y, 1f / scale.Z);
         var hasNonUniformScale = Math.Abs(scale.X - scale.Y) > 1e-7f
                               || Math.Abs(scale.Y - scale.Z) > 1e-7f;
@@ -63,8 +72,12 @@ public static class MeshTransform
                 attrOffset += (int)elem.Attribute.Size;
             }
         }
+    }
 
-        mesh.InvalidateCache();
+    public static MeshData WithTranslation(this MeshData mesh, Vector3 translation)
+    {
+        TranslateBy(mesh, translation);
+        return mesh;
     }
 
     public static void TranslateBy(this MeshData mesh, Vector3 translation)
@@ -82,7 +95,12 @@ public static class MeshTransform
             p += translation;
             VertexStreamUtils.WriteFloat3(stream, off, p);
         }
-        mesh.InvalidateCache();
+    }
+
+    public static MeshData WithRotation(this MeshData mesh, Quaternion rotation)
+    {
+        RotateBy(mesh, rotation);
+        return mesh;
     }
 
     public static void RotateBy(this MeshData mesh, Quaternion rotation)
@@ -134,12 +152,19 @@ public static class MeshTransform
                 VertexStreamUtils.WriteFloat4(stream, off, new Vector4(tangent3, handedness));
             }
         }
+    }
 
-        mesh.InvalidateCache();
+    public static MeshData WithScale(this MeshData mesh, Vector3 scale)
+    {
+        ScaleBy(mesh, scale);
+        return mesh;
     }
 
     public static void ScaleBy(this MeshData mesh, Vector3 scale)
     {
+        if (Math.Abs(scale.X) < 1e-10f || Math.Abs(scale.Y) < 1e-10f || Math.Abs(scale.Z) < 1e-10f)
+            throw new ArgumentException($"Scale components must be non-zero, got {scale}", nameof(scale));
+
         var scaleRecip = new Vector3(1f / scale.X, 1f / scale.Y, 1f / scale.Z);
         var isUniform = Math.Abs(scale.X - scale.Y) < 1e-7f && Math.Abs(scale.Y - scale.Z) < 1e-7f;
 
@@ -191,8 +216,6 @@ public static class MeshTransform
                 }
             }
         }
-
-        mesh.InvalidateCache();
     }
 
     private static Vector3 ScaleNormal(Vector3 normal, Vector3 scaleRecip)

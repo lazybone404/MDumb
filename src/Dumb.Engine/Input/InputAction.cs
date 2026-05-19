@@ -127,13 +127,13 @@ public sealed class InputAction
         InputBindingKind.GamepadButton => currentFrame.IsGamepadButtonPressed(binding.Gamepad, (GamepadButton)binding.Code) ? binding.Scale : 0f,
         InputBindingKind.GamepadAxis => currentFrame.ReadGamepadAxis(binding.Gamepad, binding.Code) * binding.Scale,
         InputBindingKind.MousePosition => 0f,
-        InputBindingKind.MouseScroll => 0f,
+        InputBindingKind.MouseScroll => currentFrame.MouseScroll.Length(),
         _ => 0f
     };
 
     private static Vector2 ReadVector2(InputBinding binding, InputFrame currentFrame) => binding.Kind switch
     {
-        InputBindingKind.MousePosition => currentFrame.MousePosition,
+        InputBindingKind.MousePosition => currentFrame.MousePosition.Uv,
         InputBindingKind.MouseScroll => currentFrame.MouseScroll,
         _ => new Vector2(ReadFloat(binding, currentFrame), 0)
     };

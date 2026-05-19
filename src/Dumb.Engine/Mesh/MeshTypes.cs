@@ -103,4 +103,16 @@ public readonly record struct MeshDescriptor(
         elementOffset = 0;
         return false;
     }
+
+    public static (int streamIndex, VertexElement element)[] GetSortedElements(
+        VertexStreamDescriptor[] streams)
+    {
+        var elements = new (int, VertexElement)[streams.Sum(s => s.Elements.Length)];
+        var idx = 0;
+        for (var si = 0; si < streams.Length; si++)
+            foreach (var e in streams[si].Elements)
+                elements[idx++] = (si, e);
+        Array.Sort(elements, (a, b) => a.Item2.Attribute.Id.CompareTo(b.Item2.Attribute.Id));
+        return elements;
+    }
 }

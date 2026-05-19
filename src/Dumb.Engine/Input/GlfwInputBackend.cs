@@ -76,7 +76,9 @@ public sealed unsafe class GlfwInputBackend : IInputBackend
 #else
         _glfw.GetCursorPos(handle, out var x, out var y);
 #endif
-        frame.SetMousePosition(new Vector2((float)x, (float)y));
+        frame.SetMousePosition(ScreenPosition.TopLeft(
+            (float)x / _window.FramebufferWidth,
+            (float)y / _window.FramebufferHeight));
 
         foreach (var button in MouseButtons)
         {
@@ -99,7 +101,7 @@ public sealed unsafe class GlfwInputBackend : IInputBackend
             if (!Dumb.Emscripten.GLFW.JoystickPresent(gamepad))
                 continue;
 
-            for (var axis = 0; axis < InputFrame.MaxGamepadAxes; axis++)
+            for (var axis = 0; axis < InputFrame.MAX_GAMEPAD_AXES; axis++)
             {
                 if (Dumb.Emscripten.GLFW.TryGetJoystickAxis(gamepad, axis, out var value))
                     frame.SetGamepadAxis(gamepad, axis, value);

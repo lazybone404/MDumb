@@ -18,7 +18,7 @@ public sealed class InputFrame
     private readonly float[,] _gamepadAxes = new float[MAX_GAMEPADS, MAX_GAMEPAD_AXES];
     private readonly bool[,] _gamepadButtons = new bool[MAX_GAMEPADS, GamepadButtonCount];
 
-    public Vector2 MousePosition { get; private set; }
+    public ScreenPosition MousePosition { get; private set; }
     public Vector2 MouseScroll { get; private set; }
 
     public bool IsKeyPressed(KeyCode key)
@@ -53,7 +53,6 @@ public sealed class InputFrame
 
     public void CopyFrom(InputFrame source)
     {
-        Clear();
         MousePosition = source.MousePosition;
         MouseScroll = source.MouseScroll;
 
@@ -77,7 +76,7 @@ public sealed class InputFrame
             _mouseButtons[index] = pressed;
     }
 
-    public void SetMousePosition(Vector2 position)
+    public void SetMousePosition(ScreenPosition position)
     {
         MousePosition = position;
     }

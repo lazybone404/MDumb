@@ -4,14 +4,24 @@ namespace Dumb.Engine.Mesh;
 
 public static class MeshTangents
 {
+    public static MeshData WithTangents(this MeshData mesh)
+    {
+        GenerateTangents(mesh);
+        return mesh;
+    }
+
     public static void GenerateTangents(this MeshData mesh)
     {
         var positions = ReadFloat3Attribute(mesh, MeshAttribute.Position);
         var normals = ReadFloat3Attribute(mesh, MeshAttribute.Normal);
         var uvs = GetUVs(mesh);
 
-        if (positions.Length == 0 || normals.Length == 0 || uvs.Length == 0)
-            return;
+        if (positions.Length == 0)
+            throw new GenerateTangentsException("Mesh has no position attribute");
+        if (normals.Length == 0)
+            throw new GenerateTangentsException("Mesh has no normal attribute");
+        if (uvs.Length == 0)
+            throw new GenerateTangentsException("Mesh has no UV attribute");
 
         var vertexCount = Math.Min(positions.Length, Math.Min(normals.Length, uvs.Length));
         var tangents = new Vector3[vertexCount];
@@ -24,10 +34,35 @@ public static class MeshTangents
 
         for (var f = 0; f < faceCount; f++)
         {
-            var i0 = hasIndices ? (int)mesh.Indices[f * 3] : f * 3;
-            var i1 = hasIndices ? (int)mesh.Indices[f * 3 + 1] : f * 3 + 1;
-            var i2 = hasIndices ? (int)mesh.Indices[f * 3 + 2] : f * 3 + 2;
+            int i0, i1, i2;
+            if (hasIndices)
+            {
+                if (mesh.Indices.Format == Silk.NET.WebGPU.IndexFormat.Uint32)
+                {
+                    var idx = mesh.Indices.GetUInt32Span();
+                    i0 = (int)idx[f * 3];
+                    i1 = (int)idx[f * 3 + 1];
+                    i2 = (int)idx[f * 3 + 2];
+                }
+                else
+                {
+                    var idx = mesh.Indices.GetUInt16Span();
+                    i0 = idx[f * 3];
+                    i1 = idx[f * 3 + 1];
+                    i2 = idx[f * 3 + 2];
+                }
+            }
+            else
+            {
+                i0 = f * 3;
+                i1 = f * 3 + 1;
+                i2 = f * 3 + 2;
+            }
 
+            AccumulateTriangle(i0, i1, i2);
+
+        void AccumulateTriangle(int i0, int i1, int i2)
+        {
             var p0 = positions[i0];
             var p1 = positions[i1];
             var p2 = positions[i2];
@@ -43,7 +78,7 @@ public static class MeshTangents
             var duv2 = uv2 - uv0;
 
             var fInv = duv1.X * duv2.Y - duv2.X * duv1.Y;
-            if (Math.Abs(fInv) < 1e-12f) continue;
+            if (Math.Abs(fInv) < 1e-12f) return;
             fInv = 1f / fInv;
 
             var tangent = new Vector3(
@@ -63,6 +98,7 @@ public static class MeshTangents
             bitangents[i0] += bitangent;
             bitangents[i1] += bitangent;
             bitangents[i2] += bitangent;
+        }
         }
 
         // Orthogonalize and compute handedness

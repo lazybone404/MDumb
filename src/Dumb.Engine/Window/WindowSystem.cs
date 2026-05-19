@@ -43,7 +43,7 @@ public sealed class WindowSystem() : SystemBase(Matchers.Of<WindowState, WindowR
 
     public override void Uninitialize(World world)
     {
-        world.Query(Matchers.Of<WindowRuntime>(), static entity =>
+        world.Query(Matchers.Of<WindowState, WindowRuntime>(), static entity =>
         {
             entity.Get<WindowRuntime>().Dispose();
         });

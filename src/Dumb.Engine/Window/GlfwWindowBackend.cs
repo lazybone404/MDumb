@@ -42,6 +42,9 @@ public sealed unsafe class GlfwWindowBackend : IWindowBackend
 
     public nint NativeHandle => (nint)_handle;
 
+    public int FramebufferWidth => _framebufferWidth;
+    public int FramebufferHeight => _framebufferHeight;
+
     public INativeWindow? Native =>
 #if BROWSER
         null;

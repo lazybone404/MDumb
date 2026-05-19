@@ -42,14 +42,37 @@ public sealed class Indices
         return result;
     }
 
+    public void CopyTo(Span<byte> destination)
+    {
+        if (_count == 0) return;
+        var byteCount = _count * _stride;
+        if (destination.Length < byteCount)
+            throw new ArgumentException(
+                $"Destination span too small: {destination.Length} < {byteCount}", nameof(destination));
+        _data.AsSpan(0, byteCount).CopyTo(destination);
+    }
+
     public ReadOnlySpan<byte> GetSpan() => _data.AsSpan(0, _count * _stride);
+
+    public ReadOnlySpan<ushort> GetUInt16Span()
+    {
+        if (_stride != 2)
+            throw new InvalidOperationException("Indices are not in Uint16 format");
+        return MemoryMarshal.Cast<byte, ushort>(GetSpan());
+    }
+
+    public ReadOnlySpan<uint> GetUInt32Span()
+    {
+        if (_stride != 4)
+            throw new InvalidOperationException("Indices are not in Uint32 format");
+        return MemoryMarshal.Cast<byte, uint>(GetSpan());
+    }
 
     public void Clear()
     {
         _count = 0;
         Format = IndexFormat.Uint16;
         _stride = 2;
-        _data = [];
     }
 
     public void SetAt(int index, uint value)

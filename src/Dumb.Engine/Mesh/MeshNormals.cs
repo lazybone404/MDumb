@@ -4,6 +4,30 @@ namespace Dumb.Engine.Mesh;
 
 public static class MeshNormals
 {
+    public static MeshData WithNormals(this MeshData mesh)
+    {
+        ComputeNormals(mesh);
+        return mesh;
+    }
+
+    public static MeshData WithFlatNormals(this MeshData mesh)
+    {
+        ComputeFlatNormals(mesh);
+        return mesh;
+    }
+
+    public static MeshData WithSmoothNormals(this MeshData mesh)
+    {
+        ComputeSmoothNormals(mesh);
+        return mesh;
+    }
+
+    public static MeshData WithAreaWeightedNormals(this MeshData mesh)
+    {
+        ComputeAreaWeightedNormals(mesh);
+        return mesh;
+    }
+
     public static void ComputeNormals(this MeshData mesh)
     {
         if (mesh.Indices.Count == 0)
@@ -46,11 +70,11 @@ public static class MeshNormals
             var ac = -ca;
 
             var weightA = ab.LengthSquared() * ac.LengthSquared() > 1e-12f
-                ? AngleBetween(ab, ac) : 0f;
+                ? AngleBetweenNormalized(Vector3.Normalize(ab), Vector3.Normalize(ac)) : 0f;
             var weightB = ba.LengthSquared() * bc.LengthSquared() > 1e-12f
-                ? AngleBetween(ba, bc) : 0f;
+                ? AngleBetweenNormalized(Vector3.Normalize(ba), Vector3.Normalize(bc)) : 0f;
             var weightC = ca.LengthSquared() * cb.LengthSquared() > 1e-12f
-                ? AngleBetween(ca, cb) : 0f;
+                ? AngleBetweenNormalized(Vector3.Normalize(ca), Vector3.Normalize(cb)) : 0f;
 
             var n = TriangleNormal(pa, pb, pc);
             normals[i0] += n * weightA;
@@ -104,9 +128,8 @@ public static class MeshNormals
     private static Vector3 TriangleNormal(Vector3 a, Vector3 b, Vector3 c)
         => Vector3.Normalize(Vector3.Cross(b - a, c - a));
 
-    private static float AngleBetween(Vector3 a, Vector3 b)
-        => MathF.Acos(Math.Clamp(
-            Vector3.Dot(Vector3.Normalize(a), Vector3.Normalize(b)), -1f, 1f));
+    private static float AngleBetweenNormalized(Vector3 a, Vector3 b)
+        => MathF.Acos(Math.Clamp(Vector3.Dot(a, b), -1f, 1f));
 
     private static Vector3[] GetPositions(MeshData mesh)
     {

@@ -11,17 +11,6 @@ public class MeshData(MeshDescriptor descriptor, byte[][] streams, Indices indic
     public SubMesh[] SubMeshes { get; set; } = [];
     public MeshDescriptor Descriptor { get; } = descriptor;
 
-    private MeshAabb? _aabb;
-
-    public MeshAabb Aabb
-    {
-        get
-        {
-            _aabb ??= ComputeAabb();
-            return _aabb.Value;
-        }
-    }
-
     public int VertexCount
     {
         get
@@ -37,25 +26,16 @@ public class MeshData(MeshDescriptor descriptor, byte[][] streams, Indices indic
     public MeshAabb ComputeAabb()
     {
         if (Streams.Length == 0 || Descriptor.Streams.Length == 0)
-        {
-            _aabb = new MeshAabb(Vector3.Zero, Vector3.Zero);
-            return _aabb.Value;
-        }
+            return new MeshAabb(Vector3.Zero, Vector3.Zero);
 
         if (!MeshDescriptor.TryFindAttribute(Descriptor.Streams, MeshAttribute.Position,
                 out var si, out var stride, out var offset))
-        {
-            _aabb = new MeshAabb(Vector3.Zero, Vector3.Zero);
-            return _aabb.Value;
-        }
+            return new MeshAabb(Vector3.Zero, Vector3.Zero);
 
         var stream = Streams[si];
         var count = stream.Length / stride;
         if (count == 0)
-        {
-            _aabb = new MeshAabb(Vector3.Zero, Vector3.Zero);
-            return _aabb.Value;
-        }
+            return new MeshAabb(Vector3.Zero, Vector3.Zero);
 
         var min = new Vector3(float.MaxValue);
         var max = new Vector3(float.MinValue);
@@ -66,13 +46,7 @@ public class MeshData(MeshDescriptor descriptor, byte[][] streams, Indices indic
             min = Vector3.Min(min, p);
             max = Vector3.Max(max, p);
         }
-        _aabb = new MeshAabb(min, max);
-        return _aabb.Value;
-    }
-
-    internal void InvalidateCache()
-    {
-        _aabb = null;
+        return new MeshAabb(min, max);
     }
 
     public bool TryValidate(out string? error)

@@ -6,6 +6,8 @@ public interface IWindowBackend : IDisposable
 {
     nint NativeHandle { get; }
     INativeWindow? Native { get; }
+    int FramebufferWidth { get; }
+    int FramebufferHeight { get; }
 
     void Pump(WindowEventSink sink);
 }

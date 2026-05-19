@@ -169,7 +169,7 @@ public sealed unsafe class ExampleApp : IDisposable
         _renderer?.Render(
             window.Width,
             window.Height,
-            input.Mouse.Position.Value,
+            input.Mouse.Position.Uv,
             horizontal,
             vertical,
             _gain,
@@ -179,7 +179,7 @@ public sealed unsafe class ExampleApp : IDisposable
 
         if (_frame % 120 == 0)
         {
-            var mouse = input.Mouse.Position.Value;
+            var mouse = input.Mouse.Position.ToRender(window.FramebufferWidth, window.FramebufferHeight);
             var state = _audio.GetState(_droneSource);
             Console.WriteLine(
                 $"frame={_frame} mouse=({mouse.X:F0},{mouse.Y:F0}) axis=({horizontal:F2},{vertical:F2}) " +

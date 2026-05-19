@@ -17,7 +17,8 @@ public static class MeshModify
                 : 0;
 
             if (selfStride != otherStride)
-                continue;
+                throw new MeshMergeException(
+                    $"Stream {s} stride mismatch: {selfStride} vs {otherStride}");
 
             var selfStream = mesh.Streams[s];
             var otherStream = other.Streams[s];
@@ -35,14 +36,15 @@ public static class MeshModify
                 mesh.Indices.Push(other.Indices[i] + (uint)vertexOffset);
         }
 
-        mesh.InvalidateCache();
     }
 
     public static void InvertWinding(this MeshData mesh)
     {
         var count = mesh.Indices.Count;
-        if (count == 0 || count % 3 != 0)
-            return;
+        if (count == 0)
+            throw new MeshWindingException("Mesh has no indices");
+        if (count % 3 != 0)
+            throw new MeshWindingException($"Index count {count} is not a multiple of 3");
 
         for (var i = 0; i < count; i += 3)
         {
@@ -79,6 +81,30 @@ public static class MeshModify
 
         // Clear indices — mesh is now un-indexed
         mesh.Indices.Clear();
+    }
+
+    public static MeshData WithMerged(this MeshData mesh, MeshData other)
+    {
+        Merge(mesh, other);
+        return mesh;
+    }
+
+    public static MeshData WithInvertedWinding(this MeshData mesh)
+    {
+        InvertWinding(mesh);
+        return mesh;
+    }
+
+    public static MeshData WithDuplicatedVertices(this MeshData mesh)
+    {
+        DuplicateVertices(mesh);
+        return mesh;
+    }
+
+    public static MeshData WithNormalizedJointWeights(this MeshData mesh)
+    {
+        NormalizeJointWeights(mesh);
+        return mesh;
     }
 
     public static void NormalizeJointWeights(this MeshData mesh)

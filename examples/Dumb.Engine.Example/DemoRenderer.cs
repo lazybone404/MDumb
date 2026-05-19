@@ -84,11 +84,9 @@ fn line(value: f32, center: f32, width: f32) -> f32 {
 
 @fragment
 fn fs_main(@location(0) uv: vec2f) -> @location(0) vec4f {
-    let safeWidth = max(u.resolution.x, 1.0);
-    let safeHeight = max(u.resolution.y, 1.0);
     let mouseUv = vec2f(
-        clamp(u.mouse.x / safeWidth, 0.0, 1.0),
-        clamp(u.mouse.y / safeHeight, 0.0, 1.0)
+        clamp(u.mouse.x, 0.0, 1.0),
+        clamp(u.mouse.y, 0.0, 1.0)
     );
     let d = distance(uv, mouseUv);
 
