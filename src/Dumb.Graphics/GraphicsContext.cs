@@ -58,6 +58,7 @@ public class GraphicsContext : IDisposable
 
     internal readonly IDeviceBackend Device;
     internal readonly ICommandBackend Command;
+    internal readonly ISwapChainBackend SwapChain;
 
 #if BROWSER
     internal readonly WGPUBrowser _wgpu;
@@ -86,10 +87,12 @@ public class GraphicsContext : IDisposable
         _wgpu = new WGPUBrowser();
         Device = new BrowserDeviceBackend(_wgpu);
         Command = new BrowserCommandBackend(_wgpu);
+        SwapChain = new BrowserSwapChainBackend(_wgpu);
 #else
         _wgpu = global::Silk.NET.WebGPU.WebGPU.GetApi();
         Device = new NativeDeviceBackend(_wgpu);
         Command = new NativeCommandBackend(_wgpu);
+        SwapChain = new NativeSwapChainBackend(_wgpu);
 #endif
     }
 
@@ -103,6 +106,38 @@ public class GraphicsContext : IDisposable
     public nint NativeAdapterHandle => NativeAdapter;
     public nint NativeDeviceHandle => NativeDevice;
     public nint NativeQueueHandle => NativeQueue;
+
+    public TextureFormat GetSurfacePreferredFormat(nint surface)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        return SwapChain.GetPreferredFormat(surface, NativeAdapter);
+    }
+
+    public void ConfigureSurface(nint surface, uint width, uint height,
+        TextureFormat format, TextureUsage usage = TextureUsage.RenderAttachment,
+        PresentMode presentMode = PresentMode.Fifo)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        SwapChain.Configure(surface, NativeDevice, width, height, format, usage, presentMode);
+    }
+
+    public nint GetSurfaceCurrentTextureView(nint surface, TextureFormat format)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        return SwapChain.GetCurrentTextureView(surface, format);
+    }
+
+    public void PresentSurface(nint surface)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        SwapChain.Present(surface);
+    }
+
+    public void UnconfigureSurface(nint surface)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        SwapChain.Unconfigure(surface);
+    }
 
     public Task InitializeAsync(RequestAdapterOptions options, DeviceDescriptor descriptor)
     {

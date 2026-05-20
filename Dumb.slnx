@@ -12,5 +12,7 @@
     <Project Path="examples/Dumb.Emscripten.Demo/Dumb.Emscripten.Demo.csproj" />
     <Project Path="examples/Dumb.Graphics.Example/Dumb.Graphics.Example.Browser.csproj" />
     <Project Path="examples/Dumb.Graphics.Example/Dumb.Graphics.Example.csproj" />
+    <Project Path="examples/Dumb.Graphics.Unlit.Example/Dumb.Graphics.Unlit.Example.Browser.csproj" />
+    <Project Path="examples/Dumb.Graphics.Unlit.Example/Dumb.Graphics.Unlit.Example.csproj" />
   </Folder>
 </Solution>

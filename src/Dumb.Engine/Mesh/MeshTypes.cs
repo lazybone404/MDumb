@@ -13,10 +13,10 @@ public readonly record struct MeshAttribute
     internal const int IdPosition = 0;
     internal const int IdNormal = 1;
     internal const int IdUV0 = 2;
-    internal const int IdTangent = 4;
-    internal const int IdColor = 5;
-    internal const int IdBoneWeights = 6;
-    internal const int IdBoneIndices = 7;
+    internal const int IdTangent = 3;
+    internal const int IdColor = 4;
+    internal const int IdBoneWeights = 5;
+    internal const int IdBoneIndices = 6;
 
     public static readonly MeshAttribute Position = new(IdPosition, VertexFormat.Float32x3, 12);
     public static readonly MeshAttribute Normal = new(IdNormal, VertexFormat.Float32x3, 12);

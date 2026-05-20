@@ -100,14 +100,23 @@ public class MeshData(MeshDescriptor descriptor, byte[][] streams, Indices indic
 
     public static MeshData FromVertices(IReadOnlyList<MeshVertex> vertices, IReadOnlyList<uint> indexData)
     {
+        VertexElement[] elements =
+        [
+            new VertexElement(MeshAttribute.Position, 0),
+            new VertexElement(MeshAttribute.Normal, 1),
+            new VertexElement(MeshAttribute.UV0, 2),
+            new VertexElement(MeshAttribute.Tangent, 3),
+            new VertexElement(MeshAttribute.Color, 4)
+        ];
+        return FromVertices(vertices, indexData, elements);
+    }
+
+    public static MeshData FromVertices(
+        IReadOnlyList<MeshVertex> vertices, IReadOnlyList<uint> indexData, VertexElement[] elements)
+    {
         ArgumentNullException.ThrowIfNull(vertices);
         ArgumentNullException.ThrowIfNull(indexData);
 
-        VertexElement[] elements =
-        [
-            MeshAttribute.Position, MeshAttribute.Normal, MeshAttribute.UV0,
-            MeshAttribute.Tangent, MeshAttribute.Color
-        ];
         var stride = (int)MeshDescriptor.StreamStride(elements);
         var stream = new byte[vertices.Count * stride];
 
@@ -115,11 +124,29 @@ public class MeshData(MeshDescriptor descriptor, byte[][] streams, Indices indic
         {
             var v = vertices[i];
             var off = i * stride;
-            VertexStreamUtils.WriteFloat3(stream, off, v.Position);
-            VertexStreamUtils.WriteFloat3(stream, off + 12, v.Normal);
-            VertexStreamUtils.WriteFloat2(stream, off + 24, v.UV);
-            VertexStreamUtils.WriteFloat4(stream, off + 32, v.Tangent);
-            VertexStreamUtils.WriteFloat4(stream, off + 48, new Vector4(v.Color, 1.0f));
+            var offset = 0;
+            foreach (var elem in elements)
+            {
+                switch (elem.Attribute.Id)
+                {
+                case MeshAttribute.IdPosition:
+                    VertexStreamUtils.WriteFloat3(stream, off + offset, v.Position);
+                    break;
+                case MeshAttribute.IdNormal:
+                    VertexStreamUtils.WriteFloat3(stream, off + offset, v.Normal);
+                    break;
+                case MeshAttribute.IdUV0:
+                    VertexStreamUtils.WriteFloat2(stream, off + offset, v.UV);
+                    break;
+                case MeshAttribute.IdTangent:
+                    VertexStreamUtils.WriteFloat4(stream, off + offset, v.Tangent);
+                    break;
+                case MeshAttribute.IdColor:
+                    VertexStreamUtils.WriteFloat4(stream, off + offset, new Vector4(v.Color, 1.0f));
+                    break;
+                }
+                offset += (int)elem.Attribute.Size;
+            }
         }
 
         var indices = indexData.Count > 0
@@ -139,8 +166,10 @@ public class MeshData(MeshDescriptor descriptor, byte[][] streams, Indices indic
     {
         VertexElement[] elements =
         [
-            MeshAttribute.Position, MeshAttribute.Normal, MeshAttribute.UV0,
-            MeshAttribute.Tangent
+            new VertexElement(MeshAttribute.Position, 0),
+            new VertexElement(MeshAttribute.Normal, 1),
+            new VertexElement(MeshAttribute.UV0, 2),
+            new VertexElement(MeshAttribute.Tangent, 3)
         ];
         var stride = (int)MeshDescriptor.StreamStride(elements);
         var stream = new byte[4 * stride];
@@ -166,11 +195,15 @@ public class MeshData(MeshDescriptor descriptor, byte[][] streams, Indices indic
 
         VertexElement[] stream0Elements =
         [
-            MeshAttribute.Position, MeshAttribute.Normal, MeshAttribute.UV0, MeshAttribute.Tangent
+            new VertexElement(MeshAttribute.Position, 0),
+            new VertexElement(MeshAttribute.Normal, 1),
+            new VertexElement(MeshAttribute.UV0, 2),
+            new VertexElement(MeshAttribute.Tangent, 3)
         ];
         VertexElement[] stream1Elements =
         [
-            MeshAttribute.BoneWeights, MeshAttribute.BoneIndices
+            new VertexElement(MeshAttribute.BoneWeights, 4),
+            new VertexElement(MeshAttribute.BoneIndices, 5)
         ];
 
         var stride0 = (int)MeshDescriptor.StreamStride(stream0Elements);
