@@ -1,6 +1,6 @@
 namespace Dumb.Emscripten.WGPUGenerator;
 
-internal static class WgpuNames
+public static class WgpuNames
 {
     public const string HEADER_FILE_NAME = "webgpu.h";
     public const string NEW_LINE = "\n";

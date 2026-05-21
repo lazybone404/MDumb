@@ -19,7 +19,7 @@ public struct DeferredLightingMaterial : IMaterial
 
     public static Engine.Mesh.MeshDescriptor VertexDescriptor => new([]);
 
-    public static BindingLayout[][] BindGroupLayouts =>
+    private static readonly BindingLayout[][] s_bindGroupLayouts =
     [
         // Group 0: Frame
         [
@@ -38,6 +38,8 @@ public struct DeferredLightingMaterial : IMaterial
             BindingLayout.UniformBuffer(0, ShaderStage.Fragment, (ulong)(GPULight.MaxLights * GPULight.Size)),
         ]
     ];
+
+    public static BindingLayout[][] BindGroupLayouts => s_bindGroupLayouts;
 
     public static TextureFormat[] ColorFormats => [TextureFormat.Rgba8Unorm];
 

@@ -64,11 +64,11 @@ public class TransformReactor : ReactorBase<TypeUnion<LocalTransform>>
         ref var lt = ref entity.Get<LocalTransform>();
 
         if (!entity.Contains<GlobalTransform>())
-            entity.Add(new GlobalTransform(Affine3D.Identity));
+            entity.Add(new GlobalTransform());
 
         var localMatrix = Affine3D.FromTRS(lt.Position, lt.Rotation, lt.Scale);
         ref var gt = ref entity.Get<GlobalTransform>();
-        gt._localMatrix = localMatrix;
+        gt.LocalMatrix = localMatrix;
 
         var parent = lt.Parent;
         if (parent is { Host: not null })
@@ -155,12 +155,12 @@ public class TransformReactor : ReactorBase<TypeUnion<LocalTransform>>
         if (lt._dirty)
         {
             localMatrix = Affine3D.FromTRS(lt.Position, lt.Rotation, lt.Scale);
-            gt._localMatrix = localMatrix;
+            gt.LocalMatrix = localMatrix;
             lt._dirty = false;
         }
         else
         {
-            localMatrix = gt._localMatrix;
+            localMatrix = gt.LocalMatrix;
         }
 
         Affine3D newGlobal;

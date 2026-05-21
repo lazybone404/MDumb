@@ -10,13 +10,13 @@ public readonly record struct MeshAttribute
     public uint DefaultLocation { get; }
 
     // Built-in attribute IDs
-    internal const int IdPosition = 0;
-    internal const int IdNormal = 1;
-    internal const int IdUV0 = 2;
-    internal const int IdTangent = 3;
-    internal const int IdColor = 4;
-    internal const int IdBoneWeights = 5;
-    internal const int IdBoneIndices = 6;
+    public const int IdPosition = 0;
+    public const int IdNormal = 1;
+    public const int IdUV0 = 2;
+    public const int IdTangent = 3;
+    public const int IdColor = 4;
+    public const int IdBoneWeights = 5;
+    public const int IdBoneIndices = 6;
 
     public static readonly MeshAttribute Position = new(IdPosition, VertexFormat.Float32x3, 12);
     public static readonly MeshAttribute Normal = new(IdNormal, VertexFormat.Float32x3, 12);

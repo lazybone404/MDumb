@@ -2,7 +2,7 @@ using Silk.NET.WebGPU;
 
 namespace Dumb.Graphics;
 
-internal unsafe interface IDeviceBackend
+public unsafe interface IDeviceBackend
 {
     // Instance & adapter
     public nint CreateInstance(InstanceDescriptor* descriptor);

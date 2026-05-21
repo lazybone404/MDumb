@@ -1,6 +1,6 @@
 namespace Dumb.Emscripten.WGPUGenerator;
 
-internal static class WgpuTypeTranslator
+public static class WgpuTypeTranslator
 {
     public static string Translate(string type) =>
         NormalizeTypeName(type switch

@@ -38,16 +38,11 @@ public readonly record struct InputBinding(
         new(InputBindingKind.MouseScroll, 0);
 }
 
-public sealed class InputAction
+public sealed class InputAction(string name)
 {
     private readonly List<InputBinding> _bindings = [];
 
-    internal InputAction(string name)
-    {
-        Name = name;
-    }
-
-    public string Name { get; }
+    public string Name { get; } = name;
 
     public IReadOnlyList<InputBinding> Bindings => _bindings;
 
@@ -63,7 +58,7 @@ public sealed class InputAction
         return this;
     }
 
-    internal void Update(InputFrame current, InputFrame previous)
+    public void Update(InputFrame current, InputFrame previous)
     {
         var pressed = false;
         var wasPressed = false;
@@ -155,7 +150,7 @@ public sealed class InputActionMap
         return action;
     }
 
-    internal void Update(InputFrame current, InputFrame previous)
+    public void Update(InputFrame current, InputFrame previous)
     {
         foreach (var action in _actions.Values)
             action.Update(current, previous);

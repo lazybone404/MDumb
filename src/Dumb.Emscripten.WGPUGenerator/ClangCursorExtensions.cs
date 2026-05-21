@@ -3,7 +3,7 @@ using ClangSharp.Interop;
 
 namespace Dumb.Emscripten.WGPUGenerator;
 
-internal static class ClangCursorExtensions
+public static class ClangCursorExtensions
 {
     public static IReadOnlyList<CXCursor> Children(this CXCursor cursor)
     {

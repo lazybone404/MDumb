@@ -9,7 +9,7 @@ namespace Dumb.Graphics;
 
 public readonly struct BindingLayout
 {
-    internal readonly BindGroupLayoutEntry Entry;
+    public readonly BindGroupLayoutEntry Entry;
 
     private BindingLayout(BindGroupLayoutEntry entry) => Entry = entry;
 
@@ -63,10 +63,10 @@ public readonly struct BindingLayout
 
 public readonly struct Binding
 {
-    internal readonly uint Slot;
-    internal readonly BindingKind Kind;
-    internal readonly Entity Entity;
-    internal readonly nuint Size;
+    public readonly uint Slot;
+    public readonly BindingKind Kind;
+    public readonly Entity Entity;
+    public readonly nuint Size;
 
     private Binding(uint slot, BindingKind kind, Entity entity, nuint size)
     {
@@ -102,26 +102,17 @@ public readonly struct Binding
     }
 }
 
-internal enum BindingKind
+public enum BindingKind
 {
     Buffer,
     TextureView,
     Sampler
 }
 
-public readonly struct VertexAttributeLayout
-{
-    public readonly uint ShaderLocation;
-    public readonly VertexFormat Format;
-    public readonly ulong Offset;
-
-    public VertexAttributeLayout(uint shaderLocation, VertexFormat format, ulong offset)
-    {
-        ShaderLocation = shaderLocation;
-        Format = format;
-        Offset = offset;
-    }
-}
+public readonly record struct VertexAttributeLayout(
+    uint ShaderLocation,
+    VertexFormat Format,
+    ulong Offset);
 
 public readonly record struct VertexBufferLayoutDescriptor
 {
@@ -175,7 +166,7 @@ public static unsafe class Pipelines
         return ctx._bindGroupLayouts.Create(HList.From(new BindGroupLayoutData { NativePtr = native, RefCount = 1 }));
     }
 
-    internal static void ReleaseBindGroupLayout(GraphicsContext ctx, Entity bgl)
+    public static void ReleaseBindGroupLayout(GraphicsContext ctx, Entity bgl)
     {
         ref var data = ref bgl.Get<BindGroupLayoutData>();
         if (Interlocked.Decrement(ref data.RefCount) == 0)
@@ -245,7 +236,7 @@ public static unsafe class Pipelines
         }));
     }
 
-    internal static void ReleaseBindGroup(GraphicsContext ctx, Entity bindGroup)
+    public static void ReleaseBindGroup(GraphicsContext ctx, Entity bindGroup)
     {
         ref var bg = ref bindGroup.Get<BindGroupData>();
         if (Interlocked.Decrement(ref bg.RefCount) == 0)
@@ -293,7 +284,7 @@ public static unsafe class Pipelines
         }));
     }
 
-    internal static void ReleasePipelineLayout(GraphicsContext ctx, Entity pipelineLayout)
+    public static void ReleasePipelineLayout(GraphicsContext ctx, Entity pipelineLayout)
     {
         ref var pl = ref pipelineLayout.Get<PipelineLayoutData>();
         if (Interlocked.Decrement(ref pl.RefCount) == 0)
@@ -385,6 +376,7 @@ public static unsafe class Pipelines
             if (vertexBuffers.Length > 0)
             {
                 var totalAttrs = vertexBuffers.ToArray().Sum(static vb => vb.Attributes.Length);
+
                 Span<VertexAttribute> allNativeAttrs = stackalloc VertexAttribute[totalAttrs];
                 Span<VertexBufferLayout> nativeBuffers = stackalloc VertexBufferLayout[vertexBuffers.Length];
 
@@ -573,6 +565,7 @@ public static unsafe class Pipelines
             if (vertexBuffers.Length > 0)
             {
                 var totalAttrs = vertexBuffers.ToArray().Sum(static vb => vb.Attributes.Length);
+
                 Span<VertexAttribute> allNativeAttrs = stackalloc VertexAttribute[totalAttrs];
                 Span<VertexBufferLayout> nativeBuffers = stackalloc VertexBufferLayout[vertexBuffers.Length];
 
@@ -649,7 +642,7 @@ public static unsafe class Pipelines
         }
     }
 
-    internal static void ReleaseRenderPipeline(GraphicsContext ctx, Entity pipeline)
+    public static void ReleaseRenderPipeline(GraphicsContext ctx, Entity pipeline)
     {
         ref var rp = ref pipeline.Get<RenderPipelineData>();
         if (Interlocked.Decrement(ref rp.RefCount) == 0)
@@ -719,7 +712,7 @@ public static unsafe class Pipelines
         }));
     }
 
-    internal static void ReleaseComputePipeline(GraphicsContext ctx, Entity pipeline)
+    public static void ReleaseComputePipeline(GraphicsContext ctx, Entity pipeline)
     {
         ref var cp = ref pipeline.Get<ComputePipelineData>();
         if (Interlocked.Decrement(ref cp.RefCount) == 0)

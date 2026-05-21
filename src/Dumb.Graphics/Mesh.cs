@@ -60,13 +60,13 @@ public static class Mesh
         }));
     }
 
-    internal static void Retain(GraphicsContext ctx, Entity mesh)
+    public static void Retain(GraphicsContext ctx, Entity mesh)
     {
         ref var data = ref mesh.Get<MeshResourceData>();
         Interlocked.Increment(ref data.RefCount);
     }
 
-    internal static void Release(GraphicsContext ctx, Entity mesh)
+    public static void Release(GraphicsContext ctx, Entity mesh)
     {
         ref var data = ref mesh.Get<MeshResourceData>();
         if (Interlocked.Decrement(ref data.RefCount) == 0)

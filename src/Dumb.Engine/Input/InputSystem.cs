@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Numerics;
 using Dumb.Engine.Window;
 using Sia;
@@ -6,7 +7,8 @@ namespace Dumb.Engine.Input;
 
 public sealed class InputSystem() : SystemBase(Matchers.Of<WindowInput, WindowRuntime>())
 {
-    private static readonly KeyCode[] KeyCodes = Enum.GetValues<KeyCode>();
+    private static readonly KeyCode[] KeyCodes = Enum.GetValues<KeyCode>()
+        .Where(k => k != KeyCode.Unknown).ToArray();
     private static readonly MouseButton[] MouseButtons = Enum.GetValues<MouseButton>();
     private static readonly GamepadButton[] GamepadButtons = Enum.GetValues<GamepadButton>();
 
@@ -35,7 +37,6 @@ public sealed class InputSystem() : SystemBase(Matchers.Of<WindowInput, WindowRu
 
         foreach (var key in KeyCodes)
         {
-            if (key == KeyCode.Unknown) continue;
             var prev = previous.IsKeyPressed(key);
             var curr = current.IsKeyPressed(key);
             if (prev != curr)
@@ -89,7 +90,7 @@ public sealed class WindowInput
     public Keyboard Keyboard { get; }
     public Mouse Mouse { get; }
 
-    internal bool Initialized { get; set; }
+    public bool Initialized { get; set; }
 
     public WindowInput()
     {
@@ -109,7 +110,7 @@ public sealed class WindowInput
 
     public InputAction Action(string name) => Actions.Action(name);
 
-    internal void BeginFrame()
+    public void BeginFrame()
     {
         Previous.CopyFrom(Current);
         Current.Clear();

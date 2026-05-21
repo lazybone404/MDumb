@@ -2,7 +2,7 @@ using Silk.NET.WebGPU;
 
 namespace Dumb.Graphics.Browser;
 
-internal sealed unsafe class BrowserDeviceBackend : IDeviceBackend
+public sealed unsafe class BrowserDeviceBackend : IDeviceBackend
 {
     private readonly Dumb.Emscripten.WGPUBrowser _wgpu;
 

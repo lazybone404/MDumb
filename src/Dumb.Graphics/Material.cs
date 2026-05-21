@@ -64,13 +64,13 @@ public static class Material
         }));
     }
 
-    internal static void Retain(GraphicsContext ctx, Entity material)
+    public static void Retain(GraphicsContext ctx, Entity material)
     {
         ref var data = ref material.Get<MaterialResourceData>();
         Interlocked.Increment(ref data.RefCount);
     }
 
-    internal static void Release(GraphicsContext ctx, Entity material)
+    public static void Release(GraphicsContext ctx, Entity material)
     {
         ref var data = ref material.Get<MaterialResourceData>();
         if (Interlocked.Decrement(ref data.RefCount) == 0)

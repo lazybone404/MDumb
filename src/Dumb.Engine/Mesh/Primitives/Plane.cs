@@ -10,8 +10,8 @@ public static partial class MeshPrimitives
         var zCount = subdivisions + 2;
         var xCount = subdivisions + 2;
 
-        var vertices = new List<MeshVertex>();
-        var indices = new List<uint>();
+        List<MeshVertex> vertices = [];
+        List<uint> indices = [];
 
         for (var z = 0; z < zCount; z++)
         {

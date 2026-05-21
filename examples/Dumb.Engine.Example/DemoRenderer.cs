@@ -17,7 +17,7 @@ using WgpuBuffer = Silk.NET.WebGPU.Buffer;
 namespace Dumb.Engine.Example;
 
 [StructLayout(LayoutKind.Sequential)]
-internal struct DemoUniforms
+public struct DemoUniforms
 {
     public float MouseX;
     public float MouseY;
@@ -156,6 +156,8 @@ fn fs_main(@location(0) uv: vec2f) -> @location(0) vec4f {
     private Queue* _queue;
 #if BROWSER
     private Dawn.SwapChain* _swapChain;
+#else
+    private Texture* _currentSurfaceTexture;
 #endif
     private ShaderModule* _shaderModule;
     private RenderPipeline* _pipeline;
@@ -416,6 +418,7 @@ fn fs_main(@location(0) uv: vec2f) -> @location(0) vec4f {
                 ConfigurePresentSurface();
             return null;
         }
+        _currentSurfaceTexture = surfaceTexture.Texture;
         return _wgpu.TextureCreateView(surfaceTexture.Texture, null);
 #endif
     }
@@ -431,6 +434,11 @@ fn fs_main(@location(0) uv: vec2f) -> @location(0) vec4f {
     private void PresentSurface()
     {
         _wgpu.SurfacePresent(_surface);
+        if (_currentSurfaceTexture != null)
+        {
+            _wgpu.TextureRelease(_currentSurfaceTexture);
+            _currentSurfaceTexture = null;
+        }
     }
 #endif
 

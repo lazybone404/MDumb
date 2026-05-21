@@ -2,7 +2,7 @@ using Silk.NET.WebGPU;
 
 namespace Dumb.Graphics.Native;
 
-internal sealed unsafe class NativeSwapChainBackend : ISwapChainBackend
+public sealed unsafe class NativeSwapChainBackend : ISwapChainBackend
 {
     private readonly WebGPU _wgpu;
     private Texture* _currentTexture;
@@ -14,26 +14,26 @@ internal sealed unsafe class NativeSwapChainBackend : ISwapChainBackend
         return _wgpu.SurfaceGetPreferredFormat((Surface*)surface, (Adapter*)adapter);
     }
 
-    public void Configure(nint surface, nint device, uint width, uint height,
-        TextureFormat format, TextureUsage usage, PresentMode presentMode)
+    public void Configure(in GraphicsSurface surface, nint device,
+        TextureUsage usage, PresentMode presentMode)
     {
         var config = new SurfaceConfiguration
         {
             Device = (Device*)device,
-            Format = format,
+            Format = surface.Format,
             Usage = usage,
-            Width = width,
-            Height = height,
+            Width = surface.Width,
+            Height = surface.Height,
             PresentMode = presentMode,
             AlphaMode = CompositeAlphaMode.Opaque,
             ViewFormatCount = 0,
             ViewFormats = null,
             NextInChain = null
         };
-        _wgpu.SurfaceConfigure((Surface*)surface, &config);
+        _wgpu.SurfaceConfigure((Surface*)surface.Handle, &config);
     }
 
-    public nint GetCurrentTextureView(nint surface, TextureFormat format)
+    public nint GetCurrentTextureView(in GraphicsSurface surface)
     {
         if (_currentTexture != null)
         {
@@ -42,7 +42,7 @@ internal sealed unsafe class NativeSwapChainBackend : ISwapChainBackend
         }
 
         SurfaceTexture surfaceTexture = default;
-        _wgpu.SurfaceGetCurrentTexture((Surface*)surface, &surfaceTexture);
+        _wgpu.SurfaceGetCurrentTexture((Surface*)surface.Handle, &surfaceTexture);
 
         if (surfaceTexture.Status != SurfaceGetCurrentTextureStatus.Success || surfaceTexture.Texture == null)
             return 0;
@@ -51,7 +51,7 @@ internal sealed unsafe class NativeSwapChainBackend : ISwapChainBackend
 
         TextureViewDescriptor viewDesc = new()
         {
-            Format = format,
+            Format = surface.Format,
             Dimension = TextureViewDimension.Dimension2D,
             BaseMipLevel = 0,
             MipLevelCount = 1,

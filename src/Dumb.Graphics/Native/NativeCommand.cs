@@ -3,7 +3,7 @@ using WgpuBuffer = Silk.NET.WebGPU.Buffer;
 
 namespace Dumb.Graphics.Native;
 
-internal sealed unsafe class NativeCommandBackend : ICommandBackend
+public sealed unsafe class NativeCommandBackend : ICommandBackend
 {
     private readonly WebGPU _wgpu;
 

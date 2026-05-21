@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Numerics;
 #if BROWSER
 using System.Runtime.CompilerServices;
@@ -14,7 +15,8 @@ namespace Dumb.Engine.Input;
 
 public sealed unsafe class GlfwInputBackend : IInputBackend
 {
-    private static readonly KeyCode[] KeyCodes = Enum.GetValues<KeyCode>();
+    private static readonly KeyCode[] KeyCodes = Enum.GetValues<KeyCode>()
+        .Where(k => k != KeyCode.Unknown).ToArray();
     private static readonly EngineMouseButton[] MouseButtons = Enum.GetValues<EngineMouseButton>();
     private static readonly GamepadButton[] GamepadButtons = Enum.GetValues<GamepadButton>();
 
@@ -57,9 +59,6 @@ public sealed unsafe class GlfwInputBackend : IInputBackend
     {
         foreach (var key in KeyCodes)
         {
-            if (key == KeyCode.Unknown)
-                continue;
-
 #if BROWSER
             frame.SetKey(key, Dumb.Emscripten.GLFW.IsKeyDown(handle, (Keys)(int)key));
 #else

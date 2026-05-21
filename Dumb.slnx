@@ -7,9 +7,9 @@
     <Project Path="src/Dumb.Graphics/Dumb.Graphics.csproj" />
   </Folder>
   <Folder Name="/examples/">
+    <Project Path="examples/Dumb.Emscripten.Example/Dumb.Emscripten.Example.csproj" />
     <Project Path="examples/Dumb.Engine.Example/Dumb.Engine.Example.Browser.csproj" />
     <Project Path="examples/Dumb.Engine.Example/Dumb.Engine.Example.csproj" />
-    <Project Path="examples/Dumb.Emscripten.Demo/Dumb.Emscripten.Demo.csproj" />
     <Project Path="examples/Dumb.Graphics.Example/Dumb.Graphics.Example.Browser.csproj" />
     <Project Path="examples/Dumb.Graphics.Example/Dumb.Graphics.Example.csproj" />
     <Project Path="examples/Dumb.Graphics.Unlit.Example/Dumb.Graphics.Unlit.Example.Browser.csproj" />

@@ -9,8 +9,8 @@ public static partial class MeshPrimitives
         sectors = Math.Max(3, sectors);
         var halfHeight = height * 0.5f;
 
-        var vertices = new List<MeshVertex>();
-        var indices = new List<uint>();
+        List<MeshVertex> vertices = [];
+        List<uint> indices = [];
 
         // Side vertices
         for (var i = 0; i <= sectors; i++)

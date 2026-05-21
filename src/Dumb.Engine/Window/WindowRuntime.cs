@@ -10,7 +10,7 @@ public sealed class WindowRuntime(IWindowBackend window, IInputBackend input) : 
     public IInputBackend Input { get; } = input;
     public WindowEventSink Events { get; } = new();
 
-    internal bool Initialized { get; set; }
+    public bool Initialized { get; set; }
 
     public nint NativeHandle => Window.NativeHandle;
     public Silk.NET.Core.Contexts.INativeWindow? Native => Window.Native;

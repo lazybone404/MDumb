@@ -2,7 +2,7 @@ using ClangSharp.Interop;
 
 namespace Dumb.Emscripten.WGPUGenerator;
 
-internal static class ClangWgpuHeaderParser
+public static class ClangWgpuHeaderParser
 {
     public static WgpuHeader Parse(string source) =>
         WithTranslationUnit(source, translationUnit =>

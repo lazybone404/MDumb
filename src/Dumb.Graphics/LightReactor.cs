@@ -6,35 +6,41 @@ using Silk.NET.WebGPU;
 namespace Dumb.Graphics;
 
 [StructLayout(LayoutKind.Sequential)]
-public struct GPULight
+public readonly struct GPULight
 {
-    public Vector3 Color;
-    public float Intensity;
-    public Vector3 Direction;
-    public float Range;
-    public Vector3 Position;
-    public uint Type;
-    public float InnerConeAngle;
-    public float OuterConeAngle;
-    public float _pad0;
-    public float _pad1;
+    public readonly Vector3 Color;
+    public readonly float Intensity;
+    public readonly Vector3 Direction;
+    public readonly float Range;
+    public readonly Vector3 Position;
+    public readonly uint Type;
+    public readonly float InnerConeAngle;
+    public readonly float OuterConeAngle;
+    public readonly float _pad0;
+    public readonly float _pad1;
 
     public const uint MaxLights = 64;
     public const int Size = 80;
 
+    public GPULight(Vector3 color, float intensity, Vector3 direction, float range,
+        Vector3 position, uint type, float innerConeAngle, float outerConeAngle)
+    {
+        Color = color;
+        Intensity = intensity;
+        Direction = direction;
+        Range = range;
+        Position = position;
+        Type = type;
+        InnerConeAngle = innerConeAngle;
+        OuterConeAngle = outerConeAngle;
+        _pad0 = 0;
+        _pad1 = 0;
+    }
+
     public static GPULight From(in Engine.Lighting.Light light, Vector3 position)
     {
-        return new GPULight
-        {
-            Color = light.Color,
-            Intensity = light.Intensity,
-            Direction = light.Direction,
-            Range = light.Range,
-            Position = position,
-            Type = (uint)light.Type,
-            InnerConeAngle = light.InnerConeAngle,
-            OuterConeAngle = light.OuterConeAngle
-        };
+        return new GPULight(light.Color, light.Intensity, light.Direction, light.Range,
+            position, (uint)light.Type, light.InnerConeAngle, light.OuterConeAngle);
     }
 }
 
@@ -42,7 +48,10 @@ public sealed class LightSyncSystem : ExtractSystemBase
 {
     private readonly GraphicsContext _ctx;
     private readonly Dictionary<int, int> _entityToSlot = [];
-    private Entity _lightBuffer;
+    private readonly HashSet<int> _seenIds = [];
+    private readonly List<int> _removedIds = [];
+    private readonly byte[] _lightData = new byte[GPULight.MaxLights * GPULight.Size];
+    private Entity _lightBuffer = null!;
     private int _lightCount;
 
     public Entity LightBuffer => _lightBuffer;
@@ -56,15 +65,14 @@ public sealed class LightSyncSystem : ExtractSystemBase
 
     public override void Execute(World world, IEntityQuery query, IEntityQuery extract)
     {
-        var seenIds = new HashSet<int>();
+        _seenIds.Clear();
         _lightCount = 0;
-
-        var lightData = new byte[GPULight.MaxLights * GPULight.Size];
+        Array.Clear(_lightData);
 
         extract.ForSlice((Entity entity, ref Engine.Lighting.Light light) =>
         {
             var id = entity.Id.Value;
-            seenIds.Add(id);
+            _seenIds.Add(id);
 
             if (!_entityToSlot.TryGetValue(id, out var slot))
             {
@@ -80,7 +88,7 @@ public sealed class LightSyncSystem : ExtractSystemBase
                 : Vector3.Zero;
 
             var gpuLight = GPULight.From(light, position);
-            MemoryMarshal.Write(lightData.AsSpan(slot * GPULight.Size), gpuLight);
+            MemoryMarshal.Write(_lightData.AsSpan(slot * GPULight.Size), gpuLight);
             _lightCount = Math.Max(_lightCount, slot + 1);
         });
 
@@ -92,13 +100,16 @@ public sealed class LightSyncSystem : ExtractSystemBase
                 BufferUsage.Uniform | BufferUsage.CopyDst);
         }
 
-        Buffers.Write(_ctx, _lightBuffer!, 0, lightData);
+        Buffers.Write(_ctx, _lightBuffer!, 0, _lightData);
 
         // Clean up removed entities
-        var removed = _entityToSlot.Keys
-            .Where(k => !seenIds.Contains(k))
-            .ToList();
-        foreach (var id in removed)
+        _removedIds.Clear();
+        foreach (var id in _entityToSlot.Keys)
+        {
+            if (!_seenIds.Contains(id))
+                _removedIds.Add(id);
+        }
+        foreach (var id in _removedIds)
             _entityToSlot.Remove(id);
     }
 }

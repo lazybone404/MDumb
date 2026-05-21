@@ -2,19 +2,10 @@ using System.Numerics;
 
 namespace Dumb.Engine.Mesh;
 
-public record struct MeshAabb
+public record struct MeshAabb(Vector3 Min, Vector3 Max)
 {
-    public Vector3 Min;
-    public Vector3 Max;
-
     public readonly Vector3 Center => (Min + Max) * 0.5f;
     public readonly Vector3 HalfExtents => (Max - Min) * 0.5f;
-
-    public MeshAabb(Vector3 min, Vector3 max)
-    {
-        Min = min;
-        Max = max;
-    }
 
     public static MeshAabb FromPositions(IReadOnlyList<Vector3> positions)
     {
@@ -31,9 +22,6 @@ public record struct MeshAabb
         return new MeshAabb(min, max);
     }
 
-    public void Merge(MeshAabb other)
-    {
-        Min = Vector3.Min(Min, other.Min);
-        Max = Vector3.Max(Max, other.Max);
-    }
+    public MeshAabb Merge(MeshAabb other) =>
+        new(Vector3.Min(Min, other.Min), Vector3.Max(Max, other.Max));
 }

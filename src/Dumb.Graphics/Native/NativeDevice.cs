@@ -2,7 +2,7 @@ using Silk.NET.WebGPU;
 
 namespace Dumb.Graphics.Native;
 
-internal sealed unsafe class NativeDeviceBackend : IDeviceBackend
+public sealed unsafe class NativeDeviceBackend : IDeviceBackend
 {
     private readonly WebGPU _wgpu;
 

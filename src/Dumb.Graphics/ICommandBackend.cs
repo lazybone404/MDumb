@@ -2,7 +2,7 @@ using Silk.NET.WebGPU;
 
 namespace Dumb.Graphics;
 
-internal unsafe interface ICommandBackend
+public unsafe interface ICommandBackend
 {
     public nint CreateCommandEncoder(nint device, CommandEncoderDescriptor* descriptor);
 

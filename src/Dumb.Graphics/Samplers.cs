@@ -46,7 +46,7 @@ public static unsafe class Samplers
         }));
     }
 
-    internal static void Release(GraphicsContext ctx, Entity sampler)
+    public static void Release(GraphicsContext ctx, Entity sampler)
     {
         ref var s = ref sampler.Get<SamplerData>();
         if (Interlocked.Decrement(ref s.RefCount) == 0)

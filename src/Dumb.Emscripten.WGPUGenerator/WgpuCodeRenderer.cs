@@ -1,6 +1,6 @@
 namespace Dumb.Emscripten.WGPUGenerator;
 
-internal static class WgpuCodeRenderer
+public static class WgpuCodeRenderer
 {
     public static string RenderEnumFile(WgpuEnum @enum, string @namespace) =>
         RenderHeader(@namespace) +

@@ -1,6 +1,6 @@
 namespace Dumb.Emscripten.WGPUGenerator;
 
-internal sealed class WgpuHeader(WgpuEnum[] enums, WgpuStruct[] structs, WgpuCallback[] callbacks)
+public sealed class WgpuHeader(WgpuEnum[] enums, WgpuStruct[] structs, WgpuCallback[] callbacks)
 {
     public static readonly WgpuHeader Empty = new([], [], []);
 
@@ -11,35 +11,35 @@ internal sealed class WgpuHeader(WgpuEnum[] enums, WgpuStruct[] structs, WgpuCal
     public WgpuCallback[] Callbacks { get; } = callbacks;
 }
 
-internal sealed class WgpuEnum(string name, WgpuEnumValue[] values)
+public sealed class WgpuEnum(string name, WgpuEnumValue[] values)
 {
     public string Name { get; } = name;
 
     public WgpuEnumValue[] Values { get; } = values;
 }
 
-internal sealed class WgpuEnumValue(string name, string value)
+public sealed class WgpuEnumValue(string name, string value)
 {
     public string Name { get; } = name;
 
     public string Value { get; } = value;
 }
 
-internal sealed class WgpuStruct(string name, WgpuField[] fields)
+public sealed class WgpuStruct(string name, WgpuField[] fields)
 {
     public string Name { get; } = name;
 
     public WgpuField[] Fields { get; } = fields;
 }
 
-internal sealed class WgpuField(string name, string type)
+public sealed class WgpuField(string name, string type)
 {
     public string Name { get; } = name;
 
     public string Type { get; } = type;
 }
 
-internal sealed class WgpuCallback(string name, string returnType, WgpuParameter[] parameters)
+public sealed class WgpuCallback(string name, string returnType, WgpuParameter[] parameters)
 {
     public string Name { get; } = name;
 
@@ -48,21 +48,21 @@ internal sealed class WgpuCallback(string name, string returnType, WgpuParameter
     public WgpuParameter[] Parameters { get; } = parameters;
 }
 
-internal sealed class WgpuParameter(string name, string type)
+public sealed class WgpuParameter(string name, string type)
 {
     public string Name { get; } = name;
 
     public string Type { get; } = type;
 }
 
-internal sealed class WgpuHeaderComparison(WgpuEnumComparison[] enums, WgpuStructComparison[] structs)
+public sealed class WgpuHeaderComparison(WgpuEnumComparison[] enums, WgpuStructComparison[] structs)
 {
     public WgpuEnumComparison[] Enums { get; } = enums;
 
     public WgpuStructComparison[] Structs { get; } = structs;
 }
 
-internal sealed class WgpuEnumComparison(WgpuEnum source, WgpuEnum silk, WgpuEnumValueMap[] valueMaps)
+public sealed class WgpuEnumComparison(WgpuEnum source, WgpuEnum silk, WgpuEnumValueMap[] valueMaps)
 {
     public WgpuEnum Source { get; } = source;
 
@@ -73,14 +73,14 @@ internal sealed class WgpuEnumComparison(WgpuEnum source, WgpuEnum silk, WgpuEnu
     public bool HasValueDifferences => ValueMaps.Any(static map => map.Source.Value != map.Silk.Value);
 }
 
-internal sealed class WgpuEnumValueMap(WgpuEnumValue source, WgpuEnumValue silk)
+public sealed class WgpuEnumValueMap(WgpuEnumValue source, WgpuEnumValue silk)
 {
     public WgpuEnumValue Source { get; } = source;
 
     public WgpuEnumValue Silk { get; } = silk;
 }
 
-internal sealed class WgpuStructComparison(WgpuStruct source, WgpuStruct silk, WgpuFieldMap[] fieldMaps)
+public sealed class WgpuStructComparison(WgpuStruct source, WgpuStruct silk, WgpuFieldMap[] fieldMaps)
 {
     public WgpuStruct Source { get; } = source;
 
@@ -99,7 +99,7 @@ internal sealed class WgpuStructComparison(WgpuStruct source, WgpuStruct silk, W
             WgpuTypeTranslator.Translate(map.Silk.Type));
 }
 
-internal sealed class WgpuFieldMap(WgpuField source, WgpuField silk)
+public sealed class WgpuFieldMap(WgpuField source, WgpuField silk)
 {
     public WgpuField Source { get; } = source;
 

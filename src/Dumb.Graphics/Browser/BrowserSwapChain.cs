@@ -3,7 +3,7 @@ using Dawn = Silk.NET.WebGPU.Extensions.Dawn;
 
 namespace Dumb.Graphics.Browser;
 
-internal sealed unsafe class BrowserSwapChainBackend : ISwapChainBackend
+public sealed unsafe class BrowserSwapChainBackend : ISwapChainBackend
 {
     private readonly Dumb.Emscripten.WGPUBrowser _wgpu;
     private Dawn.SwapChain* _swapChain;
@@ -15,8 +15,8 @@ internal sealed unsafe class BrowserSwapChainBackend : ISwapChainBackend
         return _wgpu.SurfaceGetPreferredFormat((Surface*)surface, (Adapter*)adapter);
     }
 
-    public void Configure(nint surface, nint device, uint width, uint height,
-        TextureFormat format, TextureUsage usage, PresentMode presentMode)
+    public void Configure(in GraphicsSurface surface, nint device,
+        TextureUsage usage, PresentMode presentMode)
     {
         if (_swapChain != null)
             _wgpu.SwapChainRelease(_swapChain);
@@ -24,15 +24,15 @@ internal sealed unsafe class BrowserSwapChainBackend : ISwapChainBackend
         var desc = new Dawn.SwapChainDescriptor
         {
             Usage = usage,
-            Format = format,
-            Width = width,
-            Height = height,
+            Format = surface.Format,
+            Width = surface.Width,
+            Height = surface.Height,
             PresentMode = presentMode
         };
-        _swapChain = _wgpu.DeviceCreateSwapChain((Device*)device, (Surface*)surface, desc);
+        _swapChain = _wgpu.DeviceCreateSwapChain((Device*)device, (Surface*)surface.Handle, desc);
     }
 
-    public nint GetCurrentTextureView(nint surface, TextureFormat format)
+    public nint GetCurrentTextureView(in GraphicsSurface surface)
     {
         var view = _wgpu.SwapChainGetCurrentTextureView(_swapChain);
         return (nint)view;

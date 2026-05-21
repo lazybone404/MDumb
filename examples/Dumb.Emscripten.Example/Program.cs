@@ -1,5 +1,5 @@
 using Dumb.Emscripten;
-using Dumb.Emscripten.Demo;
+using Dumb.Emscripten.Example;
 
 const string canvasSelector = "#canvas";
 const int width = 640;

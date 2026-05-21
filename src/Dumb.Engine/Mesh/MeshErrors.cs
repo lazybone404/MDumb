@@ -1,21 +1,6 @@
 namespace Dumb.Engine.Mesh;
 
-public sealed class MeshMergeException : InvalidOperationException
-{
-    internal MeshMergeException(string message) : base(message) { }
-}
-
-public sealed class MeshWindingException : InvalidOperationException
-{
-    internal MeshWindingException(string message) : base(message) { }
-}
-
-public sealed class GenerateTangentsException : InvalidOperationException
-{
-    internal GenerateTangentsException(string message) : base(message) { }
-}
-
-public sealed class MeshAttributeException : InvalidOperationException
-{
-    internal MeshAttributeException(string message) : base(message) { }
-}
+public sealed class MeshMergeException(string message) : InvalidOperationException(message);
+public sealed class MeshWindingException(string message) : InvalidOperationException(message);
+public sealed class GenerateTangentsException(string message) : InvalidOperationException(message);
+public sealed class MeshAttributeException(string message) : InvalidOperationException(message);

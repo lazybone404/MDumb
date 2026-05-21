@@ -2,46 +2,25 @@ using System.Numerics;
 
 namespace Dumb.Engine.Mesh;
 
-public struct MorphAttributes
+public record struct MorphAttributes(Vector3 Position, Vector3 Normal, Vector3 Tangent)
 {
-    public Vector3 Position;
-    public Vector3 Normal;
-    public Vector3 Tangent;
-
     public const int ComponentCount = 9;
-
-    public MorphAttributes(Vector3 position, Vector3 normal, Vector3 tangent)
-    {
-        Position = position;
-        Normal = normal;
-        Tangent = tangent;
-    }
 }
 
-public sealed class MorphWeights
+public sealed class MorphWeights(float[] weights)
 {
-    public float[] Weights { get; }
+    public float[] Weights { get; } = weights.Length > MaxMorphWeights
+        ? throw new ArgumentException($"Too many morph targets: {weights.Length} (max {MaxMorphWeights})")
+        : weights;
 
     public const int MaxMorphWeights = 64;
-
-    public MorphWeights(float[] weights)
-    {
-        if (weights.Length > MaxMorphWeights)
-            throw new ArgumentException($"Too many morph targets: {weights.Length} (max {MaxMorphWeights})");
-        Weights = weights;
-    }
 }
 
-public sealed class MeshMorphWeights
+public sealed class MeshMorphWeights(float[] weights)
 {
-    public float[] Weights { get; private set; }
-
-    public MeshMorphWeights(float[] weights)
-    {
-        if (weights.Length > MorphWeights.MaxMorphWeights)
-            throw new ArgumentException($"Too many morph targets: {weights.Length} (max {MorphWeights.MaxMorphWeights})");
-        Weights = weights;
-    }
+    public float[] Weights { get; private set; } = weights.Length > MorphWeights.MaxMorphWeights
+        ? throw new ArgumentException($"Too many morph targets: {weights.Length} (max {MorphWeights.MaxMorphWeights})")
+        : weights;
 
     public void Extend(float[] weights)
     {

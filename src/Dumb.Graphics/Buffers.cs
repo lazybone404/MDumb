@@ -90,13 +90,13 @@ public static unsafe class Buffers
         return buffer;
     }
 
-    internal static void Retain(GraphicsContext ctx, Entity buffer)
+    public static void Retain(GraphicsContext ctx, Entity buffer)
     {
         ref var buf = ref buffer.Get<BufferData>();
         Interlocked.Increment(ref buf.RefCount);
     }
 
-    internal static void Release(GraphicsContext ctx, Entity buffer)
+    public static void Release(GraphicsContext ctx, Entity buffer)
     {
         ref var buf = ref buffer.Get<BufferData>();
         if (Interlocked.Decrement(ref buf.RefCount) == 0)

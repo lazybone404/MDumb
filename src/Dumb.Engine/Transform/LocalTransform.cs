@@ -44,7 +44,7 @@ public partial record struct LocalTransform(
         }
     }
 
-    internal Entity? _parent;
-    internal Entity? _prevParent;
-    internal bool _dirty;
+    public Entity? _parent;
+    public Entity? _prevParent;
+    public bool _dirty;
 }

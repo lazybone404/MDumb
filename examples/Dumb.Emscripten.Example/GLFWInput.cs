@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 using Dumb.Emscripten;
 using Silk.NET.GLFW;
 
-namespace Dumb.Emscripten.Demo;
+namespace Dumb.Emscripten.Example;
 
 public struct InputState
 {

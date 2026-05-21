@@ -112,7 +112,7 @@ public unsafe ref struct Encoder
     private readonly GraphicsContext _ctx;
     private nint _encoder;
 
-    internal Encoder(GraphicsContext ctx, nint encoder)
+    public Encoder(GraphicsContext ctx, nint encoder)
     {
         _ctx = ctx;
         _encoder = encoder;
@@ -172,7 +172,7 @@ public unsafe ref struct RenderPass
     private readonly GraphicsContext _ctx;
     private nint _pass;
 
-    internal RenderPass(GraphicsContext ctx, nint pass)
+    public RenderPass(GraphicsContext ctx, nint pass)
     {
         _ctx = ctx;
         _pass = pass;
@@ -259,7 +259,7 @@ public unsafe ref struct ComputePass
     private readonly GraphicsContext _ctx;
     private nint _pass;
 
-    internal ComputePass(GraphicsContext ctx, nint pass)
+    public ComputePass(GraphicsContext ctx, nint pass)
     {
         _ctx = ctx;
         _pass = pass;

@@ -6,10 +6,10 @@ using Silk.NET.WebGPU;
 using Buffer = Silk.NET.WebGPU.Buffer;
 using Dawn = Silk.NET.WebGPU.Extensions.Dawn;
 
-namespace Dumb.Emscripten.Demo;
+namespace Dumb.Emscripten.Example;
 
 [StructLayout(LayoutKind.Sequential)]
-internal struct FractalUniforms
+public struct FractalUniforms
 {
     public float CenterX;
     public float CenterY;

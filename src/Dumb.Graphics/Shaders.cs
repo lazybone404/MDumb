@@ -43,7 +43,7 @@ public static unsafe class Shaders
         }));
     }
 
-    internal static void Release(GraphicsContext ctx, Entity shader)
+    public static void Release(GraphicsContext ctx, Entity shader)
     {
         ref var s = ref shader.Get<ShaderData>();
         if (Interlocked.Decrement(ref s.RefCount) == 0)

@@ -9,8 +9,8 @@ public static partial class MeshPrimitives
         sectors = Math.Max(3, sectors);
         stacks = Math.Max(2, stacks);
 
-        var vertices = new List<MeshVertex>();
-        var indices = new List<uint>();
+        List<MeshVertex> vertices = [];
+        List<uint> indices = [];
 
         for (var i = 0; i <= stacks; i++)
         {

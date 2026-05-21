@@ -4,28 +4,12 @@ using Silk.NET.WebGPU;
 
 namespace Dumb.Graphics;
 
-public readonly struct RenderTexture
-{
-    public readonly Entity Texture;
-    public readonly Entity View;
-    public readonly uint Width;
-    public readonly uint Height;
-    public readonly TextureFormat Format;
-
-    internal RenderTexture(
-        Entity texture,
-        Entity view,
-        uint width,
-        uint height,
-        TextureFormat format)
-    {
-        Texture = texture;
-        View = view;
-        Width = width;
-        Height = height;
-        Format = format;
-    }
-}
+public readonly record struct RenderTexture(
+    Entity Texture,
+    Entity View,
+    uint Width,
+    uint Height,
+    TextureFormat Format);
 
 public static unsafe class Textures
 {

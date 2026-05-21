@@ -36,7 +36,7 @@ public sealed class TransformReactorTests : IDisposable
                 Scale = scale ?? Vector3.One,
                 Parent = parent
             },
-            new GlobalTransform(Affine3D.Identity)));
+            new GlobalTransform()));
 
     private static Quaternion QuaternionFromAxisAngle(Vector3 axis, float radians) =>
         Quaternion.CreateFromAxisAngle(axis, radians);

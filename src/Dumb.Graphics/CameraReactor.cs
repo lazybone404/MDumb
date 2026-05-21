@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using Sia;
 using Silk.NET.WebGPU;
@@ -8,6 +9,8 @@ public sealed class CameraSyncSystem : ExtractSystemBase
 {
     private readonly GraphicsContext _ctx;
     private readonly Dictionary<int, Entity> _buffers = []; // entity ID → GPU buffer
+    private readonly HashSet<int> _seenIds = [];
+    private readonly List<int> _removedIds = [];
 
     public CameraSyncSystem(GraphicsContext ctx)
         : base(Matchers.Any, extractMatcher: Matchers.Of<Engine.Cameras.Camera>())
@@ -22,19 +25,19 @@ public sealed class CameraSyncSystem : ExtractSystemBase
             : throw new KeyNotFoundException("Camera entity has no uniform buffer.");
     }
 
-    public bool TryGetUniformBuffer(Entity cameraEntity, out Entity buffer)
+    public bool TryGetUniformBuffer(Entity cameraEntity, [MaybeNullWhen(false)] out Entity buffer)
     {
         return _buffers.TryGetValue(cameraEntity.Id.Value, out buffer);
     }
 
     public override void Execute(World world, IEntityQuery query, IEntityQuery extract)
     {
-        var seenIds = new HashSet<int>();
+        _seenIds.Clear();
 
         extract.ForSlice((Entity entity, ref Engine.Cameras.Camera camera) =>
         {
             var id = entity.Id.Value;
-            seenIds.Add(id);
+            _seenIds.Add(id);
 
             if (!_buffers.TryGetValue(id, out var buffer))
             {
@@ -48,16 +51,16 @@ public sealed class CameraSyncSystem : ExtractSystemBase
         });
 
         // Release buffers for entities that no longer have a Camera component
-        var removedIds = new List<int>();
+        _removedIds.Clear();
         foreach (var (id, buffer) in _buffers)
         {
-            if (!seenIds.Contains(id))
+            if (!_seenIds.Contains(id))
             {
                 Buffers.Release(_ctx, buffer);
-                removedIds.Add(id);
+                _removedIds.Add(id);
             }
         }
-        foreach (var id in removedIds)
+        foreach (var id in _removedIds)
             _buffers.Remove(id);
     }
 }

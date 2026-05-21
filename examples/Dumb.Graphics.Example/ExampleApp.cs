@@ -8,7 +8,6 @@ using Silk.NET.WebGPU;
 #if BROWSER
 using System.Text;
 using Dumb.Emscripten;
-using Dawn = Silk.NET.WebGPU.Extensions.Dawn;
 #else
 using Dumb.Engine.Input;
 using Dumb.Engine.Window;
@@ -16,7 +15,7 @@ using Dumb.Engine.Window;
 
 namespace Dumb.Graphics.Example;
 
-internal struct FlatColorMaterial : IMaterial
+public struct FlatColorMaterial : IMaterial
 {
     public Entity CameraBuffer;
     public Entity FrameBuffer;
@@ -210,20 +209,13 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4f {
     private readonly GraphicsContext _graphics = new();
 #if BROWSER
     private WGPUBrowser _wgpu = null!;
-    private unsafe Surface* _surface;
-    private unsafe Dawn.SwapChain* _swapChain;
-    private TextureFormat _surfaceFormat;
-    private uint _surfaceWidth;
-    private uint _surfaceHeight;
+    private GraphicsSurface _surface;
 #else
     private World _world = null!;
     private Entity _window;
     private SystemStage _windowStage = null!;
     private WebGPU _wgpu = null!;
-    private unsafe Surface* _surface;
-    private TextureFormat _surfaceFormat;
-    private uint _surfaceWidth;
-    private uint _surfaceHeight;
+    private GraphicsSurface _surface;
 #endif
 
     private Entity _cameraBuffer;
@@ -275,20 +267,17 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4f {
         _wgpu = _graphics.NativeApi;
 #if BROWSER
         CreateBrowserSurface();
-        unsafe { adapterOptions.CompatibleSurface = (Surface*)_surface; }
+        GraphicsContext.SetCompatibleSurface(ref adapterOptions, _surface);
         await _graphics.InitializeAsync(adapterOptions, deviceDescriptor);
-        CreateBrowserSwapChain();
-        CreateSceneResources(_surfaceFormat);
+
+        _surface.Format = _graphics.GetSurfacePreferredFormat(_surface);
+        _graphics.ConfigureSurface(_surface);
+
+        CreateSceneResources(_surface.Format);
 
         s_browserHandle = GCHandle.Alloc(this);
         Console.WriteLine("Dumb.Graphics browser WebGPU canvas example started.");
-
-        unsafe
-        {
-            Emscripten.Emscripten.RequestAnimationFrameLoop(
-                (delegate* unmanaged[Cdecl]<double, void*, int>)&BrowserAnimationFrame,
-                (void*)GCHandle.ToIntPtr(s_browserHandle));
-        }
+        StartBrowserAnimationLoop();
 
         await new TaskCompletionSource().Task;
 #else
@@ -307,11 +296,21 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4f {
             .CreateStage(_world);
 
         CreateSurface();
+        _surface.Format = _graphics.GetSurfacePreferredFormat(_surface);
         ConfigureSurface();
-        CreateSceneResources(_surfaceFormat);
+        CreateSceneResources(_surface.Format);
         RunNativeLoop();
 #endif
     }
+
+#if BROWSER
+    private unsafe void StartBrowserAnimationLoop()
+    {
+        Emscripten.Emscripten.RequestAnimationFrameLoop(
+            (delegate* unmanaged[Cdecl]<double, void*, int>)&BrowserAnimationFrame,
+            (void*)GCHandle.ToIntPtr(s_browserHandle));
+    }
+#endif
 
     private unsafe void CreateSceneResources(TextureFormat presentFormat)
     {
@@ -385,7 +384,7 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4f {
 
             var width = (uint)window.FramebufferWidth;
             var height = (uint)window.FramebufferHeight;
-            if (width != _surfaceWidth || height != _surfaceHeight)
+            if (width != _surface.Width || height != _surface.Height)
                 ConfigureSurface();
 
             RenderFrame((float)clock.Elapsed.TotalSeconds);
@@ -405,49 +404,26 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4f {
 
         var hwndDesc = new SurfaceDescriptorFromWindowsHWND
         {
-            Chain = new ChainedStruct
-            {
-                Next = null,
-                SType = SType.SurfaceDescriptorFromWindowsHwnd
-            },
+            Chain = new ChainedStruct { Next = null, SType = SType.SurfaceDescriptorFromWindowsHwnd },
             Hinstance = (void*)hInstance,
             Hwnd = (void*)hwnd
         };
 
-        var surfaceDesc = new SurfaceDescriptor
-        {
-            NextInChain = (ChainedStruct*)&hwndDesc,
-            Label = null
-        };
+        var surfaceDesc = new SurfaceDescriptor { NextInChain = (ChainedStruct*)&hwndDesc, Label = null };
 
-        _surface = _wgpu.InstanceCreateSurface((Instance*)_graphics.NativeInstanceHandle, &surfaceDesc);
-        if (_surface == null)
+        _surface = _graphics.CreateSurfaceFromNative((nint)_wgpu.InstanceCreateSurface(
+            (Instance*)_graphics.NativeInstanceHandle, &surfaceDesc));
+        if (!_surface.IsValid)
             throw new InvalidOperationException("Failed to create the WebGPU surface.");
-
-        _surfaceFormat = _wgpu.SurfaceGetPreferredFormat(_surface, (Adapter*)_graphics.NativeAdapterHandle);
     }
 
-    private unsafe void ConfigureSurface()
+    private void ConfigureSurface()
     {
         ref var window = ref _window.Get<WindowState>();
-        _surfaceWidth = Math.Max(1u, (uint)window.FramebufferWidth);
-        _surfaceHeight = Math.Max(1u, (uint)window.FramebufferHeight);
+        _surface.Width = Math.Max(1u, (uint)window.FramebufferWidth);
+        _surface.Height = Math.Max(1u, (uint)window.FramebufferHeight);
 
-        var config = new SurfaceConfiguration
-        {
-            Device = (Device*)_graphics.NativeDeviceHandle,
-            Format = _surfaceFormat,
-            Usage = TextureUsage.RenderAttachment,
-            Width = _surfaceWidth,
-            Height = _surfaceHeight,
-            PresentMode = PresentMode.Fifo,
-            AlphaMode = CompositeAlphaMode.Opaque,
-            ViewFormatCount = 0,
-            ViewFormats = null,
-            NextInChain = null
-        };
-
-        _wgpu.SurfaceConfigure(_surface, &config);
+        _graphics.ConfigureSurface(_surface);
     }
 #endif
 
@@ -459,47 +435,25 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4f {
 
         var canvasDesc = new SurfaceDescriptorFromCanvasHTMLSelector
         {
-            Chain = new ChainedStruct
-            {
-                Next = null,
-                SType = SType.SurfaceDescriptorFromCanvasHtmlSelector
-            },
+            Chain = new ChainedStruct { Next = null, SType = SType.SurfaceDescriptorFromCanvasHtmlSelector },
             Selector = (byte*)selectorHandle.AddrOfPinnedObject()
         };
 
-        var surfaceDesc = new SurfaceDescriptor
-        {
-            NextInChain = (ChainedStruct*)&canvasDesc,
-            Label = null
-        };
+        var surfaceDesc = new SurfaceDescriptor { NextInChain = (ChainedStruct*)&canvasDesc, Label = null };
 
-        _surface = _wgpu.InstanceCreateSurface((Instance*)_graphics.NativeInstanceHandle, surfaceDesc);
+        _surface = _graphics.CreateSurfaceFromNative((nint)_wgpu.InstanceCreateSurface(
+            (Instance*)_graphics.NativeInstanceHandle, surfaceDesc));
         selectorHandle.Free();
 
-        if (_surface == null)
+        if (!_surface.IsValid)
             throw new InvalidOperationException("Failed to create WebGPU surface from canvas.");
 
-        _surfaceWidth = NativeWidth;
-        _surfaceHeight = NativeHeight;
-    }
-
-    private unsafe void CreateBrowserSwapChain()
-    {
-        _surfaceFormat = _wgpu.SurfaceGetPreferredFormat(_surface, (Adapter*)_graphics.NativeAdapterHandle);
-
-        var desc = new Dawn.SwapChainDescriptor
-        {
-            Usage = TextureUsage.RenderAttachment,
-            Format = _surfaceFormat,
-            Width = _surfaceWidth,
-            Height = _surfaceHeight,
-            PresentMode = PresentMode.Fifo
-        };
-        _swapChain = _wgpu.DeviceCreateSwapChain((Device*)_graphics.NativeDeviceHandle, _surface, desc);
+        _surface.Width = NativeWidth;
+        _surface.Height = NativeHeight;
     }
 #endif
 
-    private unsafe void RenderFrame(float time)
+    private void RenderFrame(float time)
     {
         var view = Matrix4x4.CreateRotationZ((float)Math.Sin(time * 0.3) * 0.15f);
         var proj = Matrix4x4.CreateOrthographicOffCenter(-1, 1, -1, 1, -1, 1);
@@ -516,29 +470,16 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4f {
         Buffers.Write(_graphics, _frameBuffer, frameInfo);
         Buffers.Write(_graphics, _textureUniformBuffer, frameInfo);
 
-#if BROWSER
-        var swapChainView = _wgpu.SwapChainGetCurrentTextureView(_swapChain);
-        if (swapChainView == null)
-            return;
-        var targetView = Textures.WrapNativeTextureView(_graphics, (nint)swapChainView);
-        RecordAndSubmit(targetView, _surfaceWidth, _surfaceHeight);
-        Textures.ReleaseView(_graphics, targetView);
-#else
-        var surfaceTexture = new SurfaceTexture();
-        _wgpu.SurfaceGetCurrentTexture(_surface, &surfaceTexture);
-        if (surfaceTexture.Status != SurfaceGetCurrentTextureStatus.Success || surfaceTexture.Texture == null)
+        using var frame = _graphics.BeginFrame(_surface);
+        if (frame.View.Host == null)
         {
-            if (surfaceTexture.Status is SurfaceGetCurrentTextureStatus.Outdated or SurfaceGetCurrentTextureStatus.Lost)
-                ConfigureSurface();
+#if !BROWSER
+            ConfigureSurface();
+#endif
             return;
         }
 
-        var surfaceView = Textures.CreateViewForNativeTexture(_graphics, (nint)surfaceTexture.Texture, _surfaceFormat);
-        RecordAndSubmit(surfaceView, _surfaceWidth, _surfaceHeight);
-        _wgpu.SurfacePresent(_surface);
-        Textures.ReleaseView(_graphics, surfaceView);
-        _wgpu.TextureRelease(surfaceTexture.Texture);
-#endif
+        RecordAndSubmit(frame.View, _surface.Width, _surface.Height);
     }
 
     private unsafe void RecordAndSubmit(
@@ -624,34 +565,17 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4f {
 
     private static uint[] TriangleIndices() => [0, 1, 2, 3, 4, 5, 6, 7, 8, 1, 7, 4];
 
-    public unsafe void Dispose()
+    public void Dispose()
     {
         if (_disposed)
             return;
 
         _disposed = true;
-#if BROWSER
-        if (_swapChain != null)
-        {
-            _wgpu.SwapChainRelease(_swapChain);
-            _swapChain = null;
-        }
-        if (_surface != null)
-        {
-            _wgpu.SurfaceRelease(_surface);
-            _surface = null;
-        }
-#else
-        if (_surface != null)
-        {
-            _wgpu.SurfaceUnconfigure(_surface);
-            _wgpu.SurfaceRelease(_surface);
-            _surface = null;
-        }
+        _surface.Dispose();
+#if !BROWSER
         _windowStage?.Dispose();
         _world?.Dispose();
 #endif
         _graphics.Dispose();
     }
-
 }

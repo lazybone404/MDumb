@@ -3,7 +3,7 @@ using WgpuBuffer = Silk.NET.WebGPU.Buffer;
 
 namespace Dumb.Graphics.Browser;
 
-internal sealed unsafe class BrowserCommandBackend : ICommandBackend
+public sealed unsafe class BrowserCommandBackend : ICommandBackend
 {
     private readonly Dumb.Emscripten.WGPUBrowser _wgpu;
 

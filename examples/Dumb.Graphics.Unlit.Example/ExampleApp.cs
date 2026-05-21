@@ -28,20 +28,17 @@ public sealed class ExampleApp : IDisposable
     private readonly World _engineWorld;
 
 #if !BROWSER
-    private Entity _window;
+    private Entity _window = null!;
     private SystemStage _engineStage = null!;
     private CameraController _cameraController;
 #endif
 
-    private Entity _cameraEntity;
+    private Entity _cameraEntity = null!;
     private CameraSyncSystem _cameraSync = null!;
     private TransformSyncSystem _transformSync = null!;
     private SystemStage _syncStage = null!;
 
-    private nint _surface;
-    private TextureFormat _surfaceFormat;
-    private uint _surfaceWidth;
-    private uint _surfaceHeight;
+    private GraphicsSurface _surface;
 
     private Entity _unlitMaterial = null!;
     private Entity _frameBindGroup = null!;
@@ -96,9 +93,9 @@ public sealed class ExampleApp : IDisposable
 
 #if BROWSER
         CreateBrowserSurface();
-        _surfaceWidth = (uint)NativeWidth;
-        _surfaceHeight = (uint)NativeHeight;
-        SetCompatibleSurface(ref adapterOptions, _surface);
+        _surface.Width = (uint)NativeWidth;
+        _surface.Height = (uint)NativeHeight;
+        GraphicsContext.SetCompatibleSurface(ref adapterOptions, _surface);
         await _graphics.InitializeAsync(adapterOptions, deviceDescriptor);
 #else
         await _graphics.InitializeAsync(adapterOptions, deviceDescriptor);
@@ -118,8 +115,8 @@ public sealed class ExampleApp : IDisposable
 
         CreateSurface();
 
-        _surfaceFormat = _graphics.GetSurfacePreferredFormat(_surface);
-        Console.WriteLine($"[Unlit] Surface format: {_surfaceFormat}");
+        _surface.Format = _graphics.GetSurfacePreferredFormat(_surface);
+        Console.WriteLine($"[Unlit] Surface format: {_surface.Format}");
 
         ConfigureSurface();
 
@@ -130,9 +127,9 @@ public sealed class ExampleApp : IDisposable
         SetupErrorCallback();
 
 #if BROWSER
-        _surfaceFormat = _graphics.GetSurfacePreferredFormat(_surface);
-        Console.WriteLine($"[Unlit] Surface format: {_surfaceFormat}");
-        _graphics.ConfigureSurface(_surface, _surfaceWidth, _surfaceHeight, _surfaceFormat);
+        _surface.Format = _graphics.GetSurfacePreferredFormat(_surface);
+        Console.WriteLine($"[Unlit] Surface format: {_surface.Format}");
+        _graphics.ConfigureSurface(_surface);
 #endif
 
         _cameraEntity = _engineWorld.Create(HList.From(
@@ -168,7 +165,7 @@ public sealed class ExampleApp : IDisposable
 
             var width = (uint)window.FramebufferWidth;
             var height = (uint)window.FramebufferHeight;
-            if (width != _surfaceWidth || height != _surfaceHeight)
+            if (width != _surface.Width || height != _surface.Height)
                 ConfigureSurface();
 
             var elapsed = (float)clock.Elapsed.TotalSeconds;
@@ -228,9 +225,9 @@ public sealed class ExampleApp : IDisposable
         };
         var surfaceDesc = new SurfaceDescriptor { NextInChain = (ChainedStruct*)&hwndDesc, Label = null };
 
-        _surface = (nint)_graphics.NativeApi.InstanceCreateSurface(
-            (Instance*)_graphics.NativeInstanceHandle, &surfaceDesc);
-        if (_surface == 0) throw new InvalidOperationException("Failed to create WebGPU surface.");
+        _surface = _graphics.CreateSurfaceFromNative((nint)_graphics.NativeApi.InstanceCreateSurface(
+            (Instance*)_graphics.NativeInstanceHandle, &surfaceDesc));
+        if (!_surface.IsValid) throw new InvalidOperationException("Failed to create WebGPU surface.");
     }
 #endif
 
@@ -247,11 +244,11 @@ public sealed class ExampleApp : IDisposable
         };
         var surfaceDesc = new SurfaceDescriptor { NextInChain = (ChainedStruct*)&canvasDesc, Label = null };
 
-        _surface = (nint)_graphics.NativeApi.InstanceCreateSurface(
-            (Instance*)_graphics.NativeInstanceHandle, surfaceDesc);
+        _surface = _graphics.CreateSurfaceFromNative((nint)_graphics.NativeApi.InstanceCreateSurface(
+            (Instance*)_graphics.NativeInstanceHandle, surfaceDesc));
         selectorHandle.Free();
 
-        if (_surface == 0) throw new InvalidOperationException("Failed to create WebGPU surface from canvas.");
+        if (!_surface.IsValid) throw new InvalidOperationException("Failed to create WebGPU surface from canvas.");
     }
 #endif
 
@@ -259,10 +256,10 @@ public sealed class ExampleApp : IDisposable
     private void ConfigureSurface()
     {
         ref var window = ref _window.Get<WindowState>();
-        _surfaceWidth = Math.Max(1u, (uint)window.FramebufferWidth);
-        _surfaceHeight = Math.Max(1u, (uint)window.FramebufferHeight);
+        _surface.Width = Math.Max(1u, (uint)window.FramebufferWidth);
+        _surface.Height = Math.Max(1u, (uint)window.FramebufferHeight);
 
-        _graphics.ConfigureSurface(_surface, _surfaceWidth, _surfaceHeight, _surfaceFormat);
+        _graphics.ConfigureSurface(_surface);
     }
 #endif
 
@@ -292,7 +289,7 @@ public sealed class ExampleApp : IDisposable
         var layout = Pipelines.Layout(_graphics, bglEntities);
         var vertLayouts = Dumb.Graphics.Mesh.ToVertexBufferLayouts(UnlitMaterial.VertexDescriptor.Streams);
         var pipeline = Pipelines.Render(_graphics, shader, layout,
-            _surfaceFormat, TextureFormat.Depth32float, vertLayouts, UnlitMaterial.Blend);
+            _surface.Format, TextureFormat.Depth32float, vertLayouts, UnlitMaterial.Blend);
         var bindGroups = unlitMat.CreateBindGroups(_graphics, layout);
         _unlitMaterial = _graphics.CreateMaterialResource(pipeline, layout, bindGroups);
 
@@ -308,8 +305,8 @@ public sealed class ExampleApp : IDisposable
 
     private unsafe void RenderFrame(float time)
     {
-        var viewHandle = _graphics.GetSurfaceCurrentTextureView(_surface, _surfaceFormat);
-        if (viewHandle == 0)
+        using var frame = _graphics.BeginFrame(_surface);
+        if (frame.View.Host == null)
         {
 #if !BROWSER
             ConfigureSurface();
@@ -317,11 +314,9 @@ public sealed class ExampleApp : IDisposable
             return;
         }
 
-        var surfaceView = Textures.WrapNativeTextureView(_graphics, viewHandle);
-
         using var encoder = Commands.CreateEncoder(_graphics);
 
-        var ca = Commands.ColorAttachment(_graphics, surfaceView,
+        var ca = Commands.ColorAttachment(_graphics, frame.View,
             new Color { R = 0.06, G = 0.08, B = 0.11, A = 1.0 });
         var ds = Commands.DepthStencilAttachment(_graphics, _depthView);
         RenderPassDescriptor renderDesc = new()
@@ -333,8 +328,8 @@ public sealed class ExampleApp : IDisposable
 
         {
             using var pass = encoder.BeginRenderPass(&renderDesc);
-            pass.SetViewport(0, 0, _surfaceWidth, _surfaceHeight);
-            pass.SetScissorRect(0, 0, _surfaceWidth, _surfaceHeight);
+            pass.SetViewport(0, 0, _surface.Width, _surface.Height);
+            pass.SetScissorRect(0, 0, _surface.Width, _surface.Height);
 
             ref var matData = ref _unlitMaterial.Get<MaterialResourceData>();
             pass.SetPipeline(matData.Pipeline);
@@ -354,9 +349,6 @@ public sealed class ExampleApp : IDisposable
 
         var cmd = encoder.Finish();
         Commands.SubmitAndRelease(_graphics, cmd);
-
-        _graphics.PresentSurface(_surface);
-        Textures.ReleaseView(_graphics, surfaceView);
     }
 
     private void AddBox(Vector3 center, float size, Vector3 color)
@@ -406,7 +398,7 @@ public sealed class ExampleApp : IDisposable
         var local = Affine3D.FromTRS(position, Quaternion.Identity, scale);
         var entity = _engineWorld.Create(HList.From(
             new LocalTransform { Position = position, Scale = scale },
-            new GlobalTransform(local)));
+            new GlobalTransform { Value = local }));
         _renderables.Add((gpuMesh, entity));
     }
 
@@ -419,11 +411,6 @@ public sealed class ExampleApp : IDisposable
             (void*)GCHandle.ToIntPtr(s_browserHandle));
     }
 #endif
-
-    private static unsafe void SetCompatibleSurface(ref RequestAdapterOptions options, nint surface)
-    {
-        options.CompatibleSurface = (Surface*)surface;
-    }
 
     private unsafe void SetupErrorCallback()
     {
@@ -440,17 +427,12 @@ public sealed class ExampleApp : IDisposable
         Console.WriteLine($"[WGPU {type}] {msg}");
     }
 
-    public unsafe void Dispose()
+    public void Dispose()
     {
         if (_disposed) return;
         _disposed = true;
 
-        if (_surface != 0)
-        {
-            _graphics.UnconfigureSurface(_surface);
-            _graphics.NativeApi.SurfaceRelease((Surface*)_surface);
-            _surface = 0;
-        }
+        _surface.Dispose();
 
 #if !BROWSER
         _engineStage?.Dispose();

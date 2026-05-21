@@ -2,14 +2,14 @@ using Silk.NET.WebGPU;
 
 namespace Dumb.Graphics;
 
-internal unsafe interface ISwapChainBackend
+public unsafe interface ISwapChainBackend
 {
     TextureFormat GetPreferredFormat(nint surface, nint adapter);
 
-    void Configure(nint surface, nint device, uint width, uint height,
-        TextureFormat format, TextureUsage usage, PresentMode presentMode);
+    void Configure(in GraphicsSurface surface, nint device,
+        TextureUsage usage, PresentMode presentMode);
 
-    nint GetCurrentTextureView(nint surface, TextureFormat format);
+    nint GetCurrentTextureView(in GraphicsSurface surface);
 
     void Present(nint surface);
 

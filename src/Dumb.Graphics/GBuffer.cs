@@ -9,8 +9,8 @@ public sealed class GBuffer : IDisposable
     private RenderTexture _rt0; // albedo RGBA8Unorm
     private RenderTexture _rt1; // normal_roughness RGBA16Float
     private RenderTexture _rt2; // pbr RGBA8Unorm
-    private Entity _depthTexture;
-    private Entity _depthView;
+    private Entity _depthTexture = null!;
+    private Entity _depthView = null!;
 
     public uint Width { get; private set; }
     public uint Height { get; private set; }

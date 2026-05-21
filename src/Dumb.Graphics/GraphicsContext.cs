@@ -14,7 +14,7 @@ namespace Dumb.Graphics;
 
 public class GraphicsContext : IDisposable
 {
-    internal readonly World _world = new();
+    public readonly World _world = new();
 
     public World World => _world;
 
@@ -38,32 +38,32 @@ public class GraphicsContext : IDisposable
         }));
     }
 
-    internal readonly IEntityHost<HList<BufferData, EmptyHList>> _buffers;
-    internal readonly IEntityHost<HList<TextureData, EmptyHList>> _textures;
-    internal readonly IEntityHost<HList<TextureViewData, EmptyHList>> _textureViews;
-    internal readonly IEntityHost<HList<SamplerData, EmptyHList>> _samplers;
-    internal readonly IEntityHost<HList<ShaderData, EmptyHList>> _shaders;
-    internal readonly IEntityHost<HList<BindGroupLayoutData, EmptyHList>> _bindGroupLayouts;
-    internal readonly IEntityHost<HList<BindGroupData, EmptyHList>> _bindGroups;
-    internal readonly IEntityHost<HList<PipelineLayoutData, EmptyHList>> _pipelineLayouts;
-    internal readonly IEntityHost<HList<RenderPipelineData, EmptyHList>> _renderPipelines;
-    internal readonly IEntityHost<HList<ComputePipelineData, EmptyHList>> _computePipelines;
-    internal readonly IEntityHost<HList<MeshResourceData, EmptyHList>> _meshes;
-    internal readonly IEntityHost<HList<MaterialResourceData, EmptyHList>> _materials;
+    public readonly IEntityHost<HList<BufferData, EmptyHList>> _buffers;
+    public readonly IEntityHost<HList<TextureData, EmptyHList>> _textures;
+    public readonly IEntityHost<HList<TextureViewData, EmptyHList>> _textureViews;
+    public readonly IEntityHost<HList<SamplerData, EmptyHList>> _samplers;
+    public readonly IEntityHost<HList<ShaderData, EmptyHList>> _shaders;
+    public readonly IEntityHost<HList<BindGroupLayoutData, EmptyHList>> _bindGroupLayouts;
+    public readonly IEntityHost<HList<BindGroupData, EmptyHList>> _bindGroups;
+    public readonly IEntityHost<HList<PipelineLayoutData, EmptyHList>> _pipelineLayouts;
+    public readonly IEntityHost<HList<RenderPipelineData, EmptyHList>> _renderPipelines;
+    public readonly IEntityHost<HList<ComputePipelineData, EmptyHList>> _computePipelines;
+    public readonly IEntityHost<HList<MeshResourceData, EmptyHList>> _meshes;
+    public readonly IEntityHost<HList<MaterialResourceData, EmptyHList>> _materials;
 
-    internal nint NativeInstance;
-    internal nint NativeAdapter;
-    internal nint NativeDevice;
-    internal nint NativeQueue;
+    public nint NativeInstance;
+    public nint NativeAdapter;
+    public nint NativeDevice;
+    public nint NativeQueue;
 
-    internal readonly IDeviceBackend Device;
-    internal readonly ICommandBackend Command;
-    internal readonly ISwapChainBackend SwapChain;
+    public readonly IDeviceBackend Device;
+    public readonly ICommandBackend Command;
+    public readonly ISwapChainBackend SwapChain;
 
 #if BROWSER
-    internal readonly WGPUBrowser _wgpu;
+    public readonly WGPUBrowser _wgpu;
 #else
-    internal readonly WebGPU _wgpu;
+    public readonly WebGPU _wgpu;
 #endif
 
     private bool _disposed;
@@ -107,24 +107,39 @@ public class GraphicsContext : IDisposable
     public nint NativeDeviceHandle => NativeDevice;
     public nint NativeQueueHandle => NativeQueue;
 
-    public TextureFormat GetSurfacePreferredFormat(nint surface)
+    public GraphicsSurface CreateSurfaceFromNative(nint handle)
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
-        return SwapChain.GetPreferredFormat(surface, NativeAdapter);
+        return new GraphicsSurface { Handle = handle, Context = this };
     }
 
-    public void ConfigureSurface(nint surface, uint width, uint height,
-        TextureFormat format, TextureUsage usage = TextureUsage.RenderAttachment,
+    public static unsafe void SetCompatibleSurface(
+        ref RequestAdapterOptions options, in GraphicsSurface surface)
+    {
+        options.CompatibleSurface = (Surface*)surface.Handle;
+    }
+
+    public TextureFormat GetSurfacePreferredFormat(GraphicsSurface surface)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        return SwapChain.GetPreferredFormat(surface.Handle, NativeAdapter);
+    }
+
+    public void ConfigureSurface(in GraphicsSurface surface,
+        TextureUsage usage = TextureUsage.RenderAttachment,
         PresentMode presentMode = PresentMode.Fifo)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        SwapChain.Configure(surface, NativeDevice, width, height, format, usage, presentMode);
+        SwapChain.Configure(surface, NativeDevice, usage, presentMode);
     }
 
-    public nint GetSurfaceCurrentTextureView(nint surface, TextureFormat format)
+    public SurfaceFrame BeginFrame(in GraphicsSurface surface)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        return SwapChain.GetCurrentTextureView(surface, format);
+        var viewHandle = SwapChain.GetCurrentTextureView(surface);
+        Entity view = null!;
+        if (viewHandle != 0)
+            view = Textures.WrapNativeTextureView(this, viewHandle);
+        return new SurfaceFrame(this, surface.Handle, view);
     }
 
     public void PresentSurface(nint surface)
@@ -133,10 +148,19 @@ public class GraphicsContext : IDisposable
         SwapChain.Present(surface);
     }
 
-    public void UnconfigureSurface(nint surface)
+    public void UnconfigureSurface(GraphicsSurface surface)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        SwapChain.Unconfigure(surface);
+        SwapChain.Unconfigure(surface.Handle);
+    }
+
+    public unsafe void DestroySurface(ref GraphicsSurface surface)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        if (!surface.IsValid) return;
+        SwapChain.Unconfigure(surface.Handle);
+        NativeApi.SurfaceRelease((Surface*)surface.Handle);
+        surface = default;
     }
 
     public Task InitializeAsync(RequestAdapterOptions options, DeviceDescriptor descriptor)

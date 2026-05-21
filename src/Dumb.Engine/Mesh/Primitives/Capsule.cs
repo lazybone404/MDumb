@@ -7,8 +7,8 @@ public static partial class MeshPrimitives
     public static MeshData CreateCapsule(float radius, float length, int sectors, int stacks)
     {
         var halfLength = length * 0.5f;
-        var vertices = new List<MeshVertex>();
-        var indices = new List<uint>();
+        List<MeshVertex> vertices = [];
+        List<uint> indices = [];
 
         // Cylinder body
         for (var i = 0; i <= sectors; i++)

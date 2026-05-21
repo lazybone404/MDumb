@@ -1,6 +1,6 @@
 namespace Dumb.Emscripten.WGPUGenerator;
 
-internal static class WgpuNameTransforms
+public static class WgpuNameTransforms
 {
     public static string NormalizeStructName(string name) =>
         name.Replace("Impl", string.Empty);

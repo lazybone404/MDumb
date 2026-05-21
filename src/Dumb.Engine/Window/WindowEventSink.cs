@@ -23,7 +23,7 @@ public sealed class WindowEventSink
         _closeRequested = true;
     }
 
-    internal bool ConsumeResize(out int width, out int height, out int framebufferWidth, out int framebufferHeight)
+    public bool ConsumeResize(out int width, out int height, out int framebufferWidth, out int framebufferHeight)
     {
         width = _width;
         height = _height;
@@ -36,7 +36,7 @@ public sealed class WindowEventSink
         return true;
     }
 
-    internal bool ConsumeCloseRequested()
+    public bool ConsumeCloseRequested()
     {
         if (!_closeRequested) return false;
 

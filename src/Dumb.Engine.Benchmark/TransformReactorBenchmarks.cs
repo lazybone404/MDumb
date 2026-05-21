@@ -190,7 +190,7 @@ public class TransformReactorBenchmarks
                 Scale = scale ?? Vector3.One,
                 Parent = parent
             },
-            new GlobalTransform(Affine3D.Identity)));
+            new GlobalTransform()));
     }
 
     private static void SetPosition(World world, Entity entity, Vector3 value)

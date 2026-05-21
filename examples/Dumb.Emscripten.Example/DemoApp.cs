@@ -2,7 +2,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Dumb.Emscripten;
 
-namespace Dumb.Emscripten.Demo;
+namespace Dumb.Emscripten.Example;
 
 public class DemoApp
 {

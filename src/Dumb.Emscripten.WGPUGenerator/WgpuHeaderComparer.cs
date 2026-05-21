@@ -1,6 +1,6 @@
 namespace Dumb.Emscripten.WGPUGenerator;
 
-internal static class WgpuHeaderComparer
+public static class WgpuHeaderComparer
 {
     public static WgpuHeaderComparison Compare(WgpuHeader source, WgpuHeader silk) =>
         new(CompareEnums(source, silk), CompareStructs(source, silk));

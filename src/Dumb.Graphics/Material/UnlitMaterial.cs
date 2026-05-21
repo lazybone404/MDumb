@@ -33,7 +33,7 @@ public struct UnlitMaterial : IMaterial
         ])],
         IndexFormat.Uint32);
 
-    public static BindingLayout[][] BindGroupLayouts =>
+    private static readonly BindingLayout[][] s_bindGroupLayouts =
     [
         // Group 0: Frame (camera + model — provided by renderer)
         [
@@ -45,6 +45,8 @@ public struct UnlitMaterial : IMaterial
             BindingLayout.UniformBuffer(0, ShaderStage.Fragment, 16)
         ]
     ];
+
+    public static BindingLayout[][] BindGroupLayouts => s_bindGroupLayouts;
 
     public static BlendState? Blend => null;
     public static DepthStencilState? DepthStencil => new()

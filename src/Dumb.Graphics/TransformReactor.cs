@@ -10,7 +10,10 @@ public sealed class TransformSyncSystem : ExtractSystemBase
 {
     private readonly GraphicsContext _ctx;
     private readonly Dictionary<int, int> _entityToSlot = [];  // entity ID → slot index
-    private Entity _modelBuffer;
+    private readonly HashSet<int> _seenIds = [];
+    private readonly List<int> _removedIds = [];
+    private Entity _modelBuffer = null!;
+    private byte[] _modelData = [];
     private int _slotCount;
     private int _capacity;
 
@@ -45,14 +48,14 @@ public sealed class TransformSyncSystem : ExtractSystemBase
 
     public override void Execute(World world, IEntityQuery query, IEntityQuery extract)
     {
+        _seenIds.Clear();
         var neededSlots = 0;
-        var seenIds = new HashSet<int>();
 
         // Assign slots to new entities
         extract.ForSlice((Entity entity, ref Engine.Transform.GlobalTransform gt) =>
         {
             var id = entity.Id.Value;
-            seenIds.Add(id);
+            _seenIds.Add(id);
             if (!_entityToSlot.TryGetValue(id, out var slot))
             {
                 slot = _entityToSlot.Count;
@@ -82,20 +85,29 @@ public sealed class TransformSyncSystem : ExtractSystemBase
         _slotCount = neededSlots;
 
         // Write model matrices into aligned slots
-        var modelData = new byte[_capacity * SlotByteSize];
-        extract.ForSlice((Entity entity, ref Engine.Transform.GlobalTransform gt) =>
+        if (neededSlots > 0)
         {
-            var slot = _entityToSlot[entity.Id.Value];
-            var mat = gt.Value.ToMatrix4x4();
-            MemoryMarshal.Write(modelData.AsSpan(slot * SlotByteSize), mat);
-        });
-        Buffers.Write(_ctx, _modelBuffer!, 0, modelData);
+            var byteSize = neededSlots * SlotByteSize;
+            if (_modelData.Length < byteSize)
+                _modelData = new byte[byteSize];
+
+            extract.ForSlice((Entity entity, ref Engine.Transform.GlobalTransform gt) =>
+            {
+                var slot = _entityToSlot[entity.Id.Value];
+                var mat = gt.Value.ToMatrix4x4();
+                MemoryMarshal.Write(_modelData.AsSpan(slot * SlotByteSize), mat);
+            });
+            Buffers.Write(_ctx, _modelBuffer!, 0, _modelData.AsSpan(0, byteSize));
+        }
 
         // Clean up removed entities
-        var removed = _entityToSlot.Keys
-            .Where(k => !seenIds.Contains(k))
-            .ToList();
-        foreach (var id in removed)
+        _removedIds.Clear();
+        foreach (var id in _entityToSlot.Keys)
+        {
+            if (!_seenIds.Contains(id))
+                _removedIds.Add(id);
+        }
+        foreach (var id in _removedIds)
             _entityToSlot.Remove(id);
     }
 }

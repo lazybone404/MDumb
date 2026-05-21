@@ -2,18 +2,10 @@ namespace Dumb.Engine.Mesh;
 
 using System.Numerics;
 
-public class MeshBuilder<TVertex>
+public class MeshBuilder<TVertex>(Func<IReadOnlyList<TVertex>, IReadOnlyList<uint>, MeshData> build)
 {
     private readonly List<TVertex> _vertices = [];
     private readonly List<uint> _indices = [];
-
-    private readonly Func<IReadOnlyList<TVertex>, IReadOnlyList<uint>, MeshData> _build;
-
-    protected MeshBuilder(
-        Func<IReadOnlyList<TVertex>, IReadOnlyList<uint>, MeshData> build)
-    {
-        _build = build;
-    }
 
     public int VertexCount => _vertices.Count;
     public int IndexCount => _indices.Count;
@@ -42,7 +34,7 @@ public class MeshBuilder<TVertex>
         _indices.Add(i3);
     }
 
-    public MeshData Build() => _build(_vertices, _indices);
+    public MeshData Build() => build(_vertices, _indices);
 
     public void Clear()
     {
