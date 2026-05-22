@@ -30,6 +30,18 @@ public sealed class CameraSyncSystem : ExtractSystemBase
         return _buffers.TryGetValue(cameraEntity.Id.Value, out buffer);
     }
 
+    public IEnumerable<Entity> AllBuffers => _buffers.Values;
+
+    public Entity? FirstBuffer
+    {
+        get
+        {
+            foreach (var buffer in _buffers.Values)
+                return buffer;
+            return null;
+        }
+    }
+
     public override void Execute(World world, IEntityQuery query, IEntityQuery extract)
     {
         _seenIds.Clear();

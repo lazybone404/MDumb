@@ -24,7 +24,7 @@ public struct SurfaceFrame : IDisposable
         if (_disposed) return;
         _disposed = true;
 
-        if (View.Host != null)
+        if (View != null && View.Host != null)
         {
             _ctx.PresentSurface(_surface);
             Textures.ReleaseView(_ctx, View);

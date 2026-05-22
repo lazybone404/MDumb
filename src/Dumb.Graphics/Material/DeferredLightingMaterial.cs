@@ -31,7 +31,7 @@ public struct DeferredLightingMaterial : IMaterial
             BindingLayout.Texture(1, ShaderStage.Fragment),
             BindingLayout.Texture(2, ShaderStage.Fragment),
             BindingLayout.Texture(3, ShaderStage.Fragment),
-            BindingLayout.Texture(4, ShaderStage.Fragment),
+            BindingLayout.Texture(4, ShaderStage.Fragment, TextureSampleType.Depth),
         ],
         // Group 2: Lights
         [
@@ -71,7 +71,7 @@ public struct DeferredLightingMaterial : IMaterial
 
         var group2 = Pipelines.BindGroup(ctx, bgl2,
         [
-            Binding.Uniform<GPULight>(0, LightBuffer),
+            Binding.Buffer(0, LightBuffer, (nuint)(GPULight.MaxLights * GPULight.Size)),
         ]);
 
         return [null, group1, group2];
@@ -103,7 +103,7 @@ public struct DeferredLightingMaterial : IMaterial
             direction: vec3f,
             range: f32,
             position: vec3f,
-            type: u32,
+            light_type: u32,
             inner_cone: f32,
             outer_cone: f32,
         }
@@ -128,11 +128,12 @@ public struct DeferredLightingMaterial : IMaterial
             var result: vec3f;
             if abs_sum <= 1.0 {
                 result.z = 1.0 - abs_sum;
-                result.xy = n;
+                result.x = n.x;
+                result.y = n.y;
             } else {
                 result.z = abs_sum - 1.0;
-                result.x = n.x >= 0.0 ? 1.0 - abs(n.y) : abs(n.y) - 1.0;
-                result.y = n.y >= 0.0 ? 1.0 - abs(n.x) : abs(n.x) - 1.0;
+                result.x = select(abs(n.y) - 1.0, 1.0 - abs(n.y), n.x >= 0.0);
+                result.y = select(abs(n.x) - 1.0, 1.0 - abs(n.x), n.y >= 0.0);
             }
             return normalize(result);
         }
@@ -220,11 +221,11 @@ public struct DeferredLightingMaterial : IMaterial
                 let light = lights[i];
                 if light.intensity <= 0.0 { continue; }
 
-                if light.type == LIGHT_DIRECTIONAL {
+                if light.light_type == LIGHT_DIRECTIONAL {
                     color += evaluate_directional(light, normal, V, roughness, metallic, albedo);
-                } else if light.type == LIGHT_POINT {
+                } else if light.light_type == LIGHT_POINT {
                     color += evaluate_point(light, world_pos, normal, V, roughness, metallic, albedo);
-                } else if light.type == LIGHT_SPOT {
+                } else if light.light_type == LIGHT_SPOT {
                     color += evaluate_spot(light, world_pos, normal, V, roughness, metallic, albedo);
                 }
             }

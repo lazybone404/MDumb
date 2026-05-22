@@ -523,10 +523,11 @@ public static unsafe class Pipelines
         string vertexEntryPoint = "vs_main",
         string fragmentEntryPoint = "fs_main")
     {
+        DepthStencilState ds = default;
         DepthStencilState* dsPtr = null;
         if (depthFormat is { } df)
         {
-            var ds = new DepthStencilState
+            ds = new DepthStencilState
             {
                 Format = df,
                 DepthWriteEnabled = true,
@@ -537,10 +538,11 @@ public static unsafe class Pipelines
             dsPtr = &ds;
         }
 
+        BlendState bs = default;
         BlendState* bsPtr = null;
         if (blend is { } b)
         {
-            var bs = b;
+            bs = b;
             bsPtr = &bs;
         }
 
