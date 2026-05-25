@@ -185,7 +185,7 @@ public unsafe ref struct RenderPass
         _ctx.Command.RenderPassEncoderSetPipeline(_pass, data.NativePtr);
     }
 
-    public void SetBindGroup(uint groupIndex, Entity group, ReadOnlySpan<uint> dynamicOffsets = default)
+    public void SetBindGroup(uint groupIndex, Entity group, scoped ReadOnlySpan<uint> dynamicOffsets = default)
     {
         ThrowIfEnded();
         ref var data = ref group.Get<BindGroupData>();
@@ -272,7 +272,7 @@ public unsafe ref struct ComputePass
         _ctx.Command.ComputePassEncoderSetPipeline(_pass, data.NativePtr);
     }
 
-    public void SetBindGroup(uint groupIndex, Entity group, ReadOnlySpan<uint> dynamicOffsets = default)
+    public void SetBindGroup(uint groupIndex, Entity group, scoped ReadOnlySpan<uint> dynamicOffsets = default)
     {
         ThrowIfEnded();
         ref var data = ref group.Get<BindGroupData>();

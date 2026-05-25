@@ -1,5 +1,6 @@
 using Silk.NET.WebGPU;
 using WgpuBuffer = Silk.NET.WebGPU.Buffer;
+using Dumb.Graphics.Interfaces;
 
 namespace Dumb.Graphics.Browser;
 

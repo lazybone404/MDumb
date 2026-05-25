@@ -9,7 +9,7 @@ using Dumb.Engine.Transform;
 using Dumb.Graphics;
 using Dumb.Graphics.Pipeline;
 using Dumb.Graphics.Pipeline.Nodes;
-using Dumb.Graphics.Rendering.Material;
+using Dumb.Graphics.Material;
 using Sia;
 using Silk.NET.WebGPU;
 using RenderPipeline = Dumb.Graphics.Pipeline.RenderPipeline;
@@ -197,6 +197,13 @@ public sealed class ExampleApp : IDisposable
 
         _pipeline.Graph.AddNode(new GBufferPassNode(_graphics, _phaseQueue, _gbuffer));
         _pipeline.Graph.AddNode(_deferredLightingNode);
+
+        var compileResult = _pipeline.Graph.Compile();
+        if (!compileResult.Success)
+            foreach (var err in compileResult.Errors)
+                Console.WriteLine($"[Graph Error] {err}");
+        foreach (var warn in compileResult.Warnings)
+            Console.WriteLine($"[Graph Warning] {warn}");
     }
 
     // ── Scene creation ────────────────────────────────────────────
@@ -237,7 +244,7 @@ public sealed class ExampleApp : IDisposable
             EmissiveTexture = defaultBlack,
             Sampler = Samplers.LinearClamp(_graphics)
         };
-        _pbrMaterialEntity = Material.Create(_graphics, mat);
+        _pbrMaterialEntity = Materials.Create(_graphics, mat);
 
         ref var matData = ref _pbrMaterialEntity.Get<MaterialResourceData>();
         ref var plData = ref matData.PipelineLayout.Get<PipelineLayoutData>();
@@ -419,19 +426,24 @@ public sealed class ExampleApp : IDisposable
     {
         var selectorBytes = Encoding.UTF8.GetBytes("#canvas\0");
         var selectorHandle = GCHandle.Alloc(selectorBytes, GCHandleType.Pinned);
-
-        var canvasDesc = new SurfaceDescriptorFromCanvasHTMLSelector
+        try
         {
-            Chain = new ChainedStruct { Next = null, SType = SType.SurfaceDescriptorFromCanvasHtmlSelector },
-            Selector = (byte*)selectorHandle.AddrOfPinnedObject()
-        };
-        var surfaceDesc = new SurfaceDescriptor { NextInChain = (ChainedStruct*)&canvasDesc, Label = null };
+            var canvasDesc = new SurfaceDescriptorFromCanvasHTMLSelector
+            {
+                Chain = new ChainedStruct { Next = null, SType = SType.SurfaceDescriptorFromCanvasHtmlSelector },
+                Selector = (byte*)selectorHandle.AddrOfPinnedObject()
+            };
+            var surfaceDesc = new SurfaceDescriptor { NextInChain = (ChainedStruct*)&canvasDesc, Label = null };
 
-        _surface = _graphics.CreateSurfaceFromNative((nint)_graphics.NativeApi.InstanceCreateSurface(
-            (Instance*)_graphics.NativeInstanceHandle, surfaceDesc));
-        selectorHandle.Free();
+            _surface = _graphics.CreateSurfaceFromNative((nint)_graphics.NativeApi.InstanceCreateSurface(
+                (Instance*)_graphics.NativeInstanceHandle, surfaceDesc));
 
-        if (!_surface.IsValid) throw new InvalidOperationException("Failed to create WebGPU surface from canvas.");
+            if (!_surface.IsValid) throw new InvalidOperationException("Failed to create WebGPU surface from canvas.");
+        }
+        finally
+        {
+            selectorHandle.Free();
+        }
     }
 #endif
 

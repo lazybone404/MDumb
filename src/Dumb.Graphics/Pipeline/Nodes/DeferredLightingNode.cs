@@ -1,5 +1,5 @@
 using System.Runtime.CompilerServices;
-using Dumb.Graphics.Rendering.Material;
+using Dumb.Graphics.Material;
 using Sia;
 using Silk.NET.WebGPU;
 
@@ -39,6 +39,15 @@ public sealed class DeferredLightingNode : RenderNode
         _surfaceFormat = surfaceFormat;
     }
 
+    public override void DeclareResources()
+    {
+        Inputs.Add(new ResourceHandle(_gbuffer.RT0View, "GBuffer_Albedo"));
+        Inputs.Add(new ResourceHandle(_gbuffer.RT1View, "GBuffer_NormalRoughness"));
+        Inputs.Add(new ResourceHandle(_gbuffer.RT2View, "GBuffer_PBR"));
+        Inputs.Add(new ResourceHandle(_gbuffer.DepthView, "GBuffer_Depth"));
+        Outputs.Add(new ResourceHandle(SwapchainView, "SwapchainOutput"));
+    }
+
     public override void Update(World world)
     {
         var cameraBuffer = _cameraSync.FirstBuffer;
@@ -47,19 +56,7 @@ public sealed class DeferredLightingNode : RenderNode
         if (!_materialCreated)
         {
             _sampler = Samplers.LinearClamp(_ctx);
-
-            var matCfg = new DeferredLightingMaterial
-            {
-                GBufferRT0 = _gbuffer.RT0View,
-                GBufferRT1 = _gbuffer.RT1View,
-                GBufferRT2 = _gbuffer.RT2View,
-                GBufferDepth = _gbuffer.DepthView,
-                Sampler = _sampler,
-                CameraBuffer = camBuf,
-                LightBuffer = _lightSync.LightBuffer,
-            };
-
-            CreatePipelineResources(matCfg);
+            CreatePipelineResources(BuildMaterialConfig(camBuf));
             _materialCreated = true;
         }
 
@@ -71,18 +68,7 @@ public sealed class DeferredLightingNode : RenderNode
         if (_cachedCameraBufferId == cameraId && _cachedGbufferKey == gbufferKey)
             return;
 
-        var matCfg2 = new DeferredLightingMaterial
-        {
-            GBufferRT0 = _gbuffer.RT0View,
-            GBufferRT1 = _gbuffer.RT1View,
-            GBufferRT2 = _gbuffer.RT2View,
-            GBufferDepth = _gbuffer.DepthView,
-            Sampler = _sampler,
-            CameraBuffer = camBuf,
-            LightBuffer = _lightSync.LightBuffer,
-        };
-
-        var bindGroups = matCfg2.CreateBindGroups(_ctx, _pipelineLayout);
+        var bindGroups = BuildMaterialConfig(camBuf).CreateBindGroups(_ctx, _pipelineLayout);
 
         if (_cachedGroup1 is { } old1)
             Pipelines.ReleaseBindGroup(_ctx, old1);
@@ -107,6 +93,20 @@ public sealed class DeferredLightingNode : RenderNode
 
         _cachedCameraBufferId = cameraId;
         _cachedGbufferKey = gbufferKey;
+    }
+
+    private DeferredLightingMaterial BuildMaterialConfig(Entity camBuf)
+    {
+        return new DeferredLightingMaterial
+        {
+            GBufferRT0 = _gbuffer.RT0View,
+            GBufferRT1 = _gbuffer.RT1View,
+            GBufferRT2 = _gbuffer.RT2View,
+            GBufferDepth = _gbuffer.DepthView,
+            Sampler = _sampler,
+            CameraBuffer = camBuf,
+            LightBuffer = _lightSync.LightBuffer,
+        };
     }
 
     private void CreatePipelineResources(DeferredLightingMaterial matCfg)

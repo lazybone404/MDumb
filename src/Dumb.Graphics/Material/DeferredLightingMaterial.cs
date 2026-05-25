@@ -1,7 +1,7 @@
 using Sia;
 using Silk.NET.WebGPU;
 
-namespace Dumb.Graphics.Rendering.Material;
+namespace Dumb.Graphics.Material;
 
 public struct DeferredLightingMaterial : IMaterial
 {

@@ -1,6 +1,6 @@
 using Silk.NET.WebGPU;
 
-namespace Dumb.Graphics;
+namespace Dumb.Graphics.Interfaces;
 
 public unsafe interface IDeviceBackend
 {

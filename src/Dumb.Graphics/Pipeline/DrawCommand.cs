@@ -7,10 +7,7 @@ public static class DrawCommand
         pass.SetPipeline(item.Pipeline);
 
         if (item.BindGroups.Length > 0 && item.BindGroups[0] is { Host: not null } frameBg)
-        {
-            uint[] offsets = [item.ModelOffset];
-            pass.SetBindGroup(0, frameBg, offsets);
-        }
+            pass.SetBindGroup(0, frameBg, stackalloc uint[] { item.ModelOffset });
 
         for (var i = 1u; i < item.BindGroups.Length; i++)
         {

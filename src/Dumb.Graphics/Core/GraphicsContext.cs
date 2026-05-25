@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using Sia;
 using Silk.NET.WebGPU;
+using Dumb.Graphics.Interfaces;
 #if BROWSER
 using Dumb.Emscripten;
 using Dumb.Graphics.Browser;

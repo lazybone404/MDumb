@@ -1,5 +1,6 @@
 using Silk.NET.WebGPU;
 using Dawn = Silk.NET.WebGPU.Extensions.Dawn;
+using Dumb.Graphics.Interfaces;
 
 namespace Dumb.Graphics.Browser;
 

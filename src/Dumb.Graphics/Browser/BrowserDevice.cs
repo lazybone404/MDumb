@@ -1,4 +1,5 @@
 using Silk.NET.WebGPU;
+using Dumb.Graphics.Interfaces;
 
 namespace Dumb.Graphics.Browser;
 

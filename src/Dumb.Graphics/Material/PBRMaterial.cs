@@ -4,7 +4,7 @@ using System.Runtime.InteropServices;
 using Sia;
 using Silk.NET.WebGPU;
 
-namespace Dumb.Graphics.Rendering.Material;
+namespace Dumb.Graphics.Material;
 
 [StructLayout(LayoutKind.Sequential, Size = 80)]
 public struct PBRMaterialParameters

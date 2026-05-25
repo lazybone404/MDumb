@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -63,11 +64,12 @@ public sealed class PhaseQueueSystem : ExtractSystemBase
         if (_gpuMeshMap.Remove(id, out var gpuMesh))
             Mesh.Release(_ctx, gpuMesh);
         if (_gpuMaterialMap.Remove(id, out var gpuMat))
-            Material.Release(_ctx, gpuMat);
+            Materials.Release(_ctx, gpuMat);
     }
 
     public override void Execute(World world, IEntityQuery query, IEntityQuery extract)
     {
+        ReturnPooledBindGroups();
         OpaquePhase.Clear();
         TransparentPhase.Clear();
         _seenIds.Clear();
@@ -93,15 +95,16 @@ public sealed class PhaseQueueSystem : ExtractSystemBase
             var frameBg = GetOrCreateFrameBindGroup();
             if (frameBg is null) return;
 
-            var bindGroups = new Entity?[matData.BindGroups.Length];
+            var len = matData.BindGroups.Length;
+            var bindGroups = ArrayPool<Entity?>.Shared.Rent(len);
             bindGroups[0] = frameBg;
-            for (var i = 1; i < matData.BindGroups.Length; i++)
+            for (var i = 1; i < len; i++)
                 bindGroups[i] = matData.BindGroups[i];
 
             var binKey = ((ulong)matData.Pipeline.Id.Value << 32)
                        | ((ulong)gpuMaterial.Id.Value & 0xFFFFFFFF);
 
-            var item = new PhaseItem(
+            OpaquePhase.Add(new PhaseItem(
                 DrawEntity: gpuMaterial,
                 Pipeline: matData.Pipeline,
                 PipelineLayout: matData.PipelineLayout,
@@ -109,12 +112,18 @@ public sealed class PhaseQueueSystem : ExtractSystemBase
                 Mesh: gpuMesh,
                 SubMeshIndex: 0,
                 ModelOffset: modelOffset
-            );
-
-            OpaquePhase.Add(item, binKey);
+            ), binKey);
         });
 
         CleanupRemovedEntities();
+    }
+
+    private void ReturnPooledBindGroups()
+    {
+        foreach (var binItems in OpaquePhase.Bins)
+            foreach (var item in binItems)
+                if (item.BindGroups is { } arr)
+                    ArrayPool<Entity?>.Shared.Return(arr);
     }
 
     private Entity? GetOrCreateFrameBindGroup()
@@ -183,7 +192,7 @@ public sealed class PhaseQueueSystem : ExtractSystemBase
             if (_gpuMeshMap.Remove(id, out var gpuMesh))
                 Mesh.Release(_ctx, gpuMesh);
             if (_gpuMaterialMap.Remove(id, out var gpuMat))
-                Material.Release(_ctx, gpuMat);
+                Materials.Release(_ctx, gpuMat);
             _meshRegistry.Remove(id);
         }
     }

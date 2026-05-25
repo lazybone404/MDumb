@@ -6,7 +6,7 @@ using Dumb.Engine.Cameras;
 using Dumb.Engine.Mesh;
 using Dumb.Engine.Transform;
 using Dumb.Graphics;
-using Dumb.Graphics.Rendering.Material;
+using Dumb.Graphics.Material;
 using Sia;
 using Silk.NET.WebGPU;
 #if BROWSER
