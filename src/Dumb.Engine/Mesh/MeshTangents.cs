@@ -17,11 +17,11 @@ public static class MeshTangents
         var uvs = GetUVs(mesh);
 
         if (positions.Length == 0)
-            throw new GenerateTangentsException("Mesh has no position attribute");
+            throw new InvalidOperationException("Mesh has no position attribute.");
         if (normals.Length == 0)
-            throw new GenerateTangentsException("Mesh has no normal attribute");
+            throw new InvalidOperationException("Mesh has no normal attribute.");
         if (uvs.Length == 0)
-            throw new GenerateTangentsException("Mesh has no UV attribute");
+            throw new InvalidOperationException("Mesh has no UV attribute.");
 
         var vertexCount = Math.Min(positions.Length, Math.Min(normals.Length, uvs.Length));
         var tangents = new Vector3[vertexCount];

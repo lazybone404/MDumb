@@ -69,27 +69,31 @@ public sealed class DeferredLightingNode : RenderNode
             return;
 
         var bindGroups = BuildMaterialConfig(camBuf).CreateBindGroups(_ctx, _pipelineLayout);
-
-        if (_cachedGroup1 is { } old1)
-            Pipelines.ReleaseBindGroup(_ctx, old1);
-        if (_cachedGroup2 is { } old2)
-            Pipelines.ReleaseBindGroup(_ctx, old2);
-
-        _cachedGroup1 = bindGroups[1];
-        _cachedGroup2 = bindGroups[2];
+        var newGroup1 = bindGroups[1];
+        var newGroup2 = bindGroups[2];
 
         ref var plData = ref _pipelineLayout.Get<PipelineLayoutData>();
         var frameBgl = plData.BindGroupLayouts?[0];
+        Entity? newFrameBg = null;
         if (frameBgl?.Host != null)
         {
-            if (_cachedFrameBg is { } oldFg)
-                Pipelines.ReleaseBindGroup(_ctx, oldFg);
-
-            _cachedFrameBg = Pipelines.BindGroup(_ctx, frameBgl,
+            newFrameBg = Pipelines.BindGroup(_ctx, frameBgl,
             [
                 Binding.Buffer(0, camBuf, (nuint)Unsafe.SizeOf<CameraUniforms>()),
             ]);
         }
+
+        // Release old only after new are created successfully.
+        if (_cachedGroup1 is { } old1)
+            Pipelines.ReleaseBindGroup(_ctx, old1);
+        if (_cachedGroup2 is { } old2)
+            Pipelines.ReleaseBindGroup(_ctx, old2);
+        if (_cachedFrameBg is { } oldFg)
+            Pipelines.ReleaseBindGroup(_ctx, oldFg);
+
+        _cachedGroup1 = newGroup1;
+        _cachedGroup2 = newGroup2;
+        _cachedFrameBg = newFrameBg;
 
         _cachedCameraBufferId = cameraId;
         _cachedGbufferKey = gbufferKey;

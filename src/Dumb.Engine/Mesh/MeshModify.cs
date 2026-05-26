@@ -17,7 +17,7 @@ public static class MeshModify
                 : 0;
 
             if (selfStride != otherStride)
-                throw new MeshMergeException(
+                throw new InvalidOperationException(
                     $"Stream {s} stride mismatch: {selfStride} vs {otherStride}");
 
             var selfStream = mesh.Streams[s];
@@ -42,9 +42,9 @@ public static class MeshModify
     {
         var count = mesh.Indices.Count;
         if (count == 0)
-            throw new MeshWindingException("Mesh has no indices");
+            throw new InvalidOperationException("Mesh has no indices.");
         if (count % 3 != 0)
-            throw new MeshWindingException($"Index count {count} is not a multiple of 3");
+            throw new InvalidOperationException($"Index count ({count}) is not a multiple of 3.");
 
         for (var i = 0; i < count; i += 3)
         {

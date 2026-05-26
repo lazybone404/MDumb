@@ -82,9 +82,8 @@ public sealed class LightSyncSystem : ExtractSystemBase
             if (slot >= GPULight.MaxLights)
                 return;
 
-            // Resolve world position from transform if entity has one
-            var position = entity.Contains<Engine.Transform.LocalTransform>()
-                ? entity.Get<Engine.Transform.LocalTransform>().Position
+            var position = entity.Contains<Engine.Transform.GlobalTransform>()
+                ? entity.Get<Engine.Transform.GlobalTransform>().Value.Translation
                 : Vector3.Zero;
 
             var gpuLight = GPULight.From(light, position);

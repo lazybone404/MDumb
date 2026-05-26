@@ -9,22 +9,22 @@ namespace Dumb.Graphics.Material;
 [StructLayout(LayoutKind.Sequential, Size = 80)]
 public struct PBRMaterialParameters
 {
-    public Vector3 Albedo;
-    public float _pad0;
-    public float Metallic;
-    public float Roughness;
-    public float AmbientOcclusion;
-    public float _padAO;
-    public Vector3 Emissive;
-    public float _pad1;
-    public float _padding;
-    public float _padEnd0;
-    public float _padEnd1;
-    public float _padEnd2;
-    public float _padEnd3;
-    public float _padEnd4;
-    public float _padEnd5;
-    public float _padEnd6;
+    public Vector3 Albedo;              // offset 0,  WGSL: albedo: vec3f
+    public float _pad0;                 // offset 12, WGSL: _pad0: f32
+    public float Metallic;              // offset 16, WGSL: metallic: f32
+    public float Roughness;             // offset 20, WGSL: roughness: f32
+    public float AmbientOcclusion;      // offset 24, WGSL: ambient_occlusion: f32
+    public float _wgpuAlign0;           // offset 28, WGSL implicit padding (vec3f align 16)
+    public Vector3 Emissive;            // offset 32, WGSL: emissive: vec3f
+    public float _pad1;                 // offset 44, WGSL: _pad1: f32
+    public float _pad;                  // offset 48, WGSL: _pad: f32
+    public float _wgpuAlign1;           // offset 52, WGSL implicit padding (vec4f align 16)
+    public float _wgpuAlign2;           // offset 56
+    public float _wgpuAlign3;           // offset 60
+    public float _padEnd0;              // offset 64, WGSL: _padEnd: vec4f
+    public float _padEnd1;              // offset 68
+    public float _padEnd2;              // offset 72
+    public float _padEnd3;              // offset 76
 
     public static readonly PBRMaterialParameters Default = new()
     {
