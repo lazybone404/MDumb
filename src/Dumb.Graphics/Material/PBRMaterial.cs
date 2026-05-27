@@ -9,11 +9,11 @@ namespace Dumb.Graphics.Material;
 [StructLayout(LayoutKind.Sequential, Size = 80)]
 public struct PBRMaterialParameters
 {
-    public Vector3 Albedo;              // offset 0,  WGSL: albedo: vec3f
+    public Vector3 BaseColor;           // offset 0,  WGSL: base_color: vec3f
     public float _pad0;                 // offset 12, WGSL: _pad0: f32
     public float Metallic;              // offset 16, WGSL: metallic: f32
     public float Roughness;             // offset 20, WGSL: roughness: f32
-    public float AmbientOcclusion;      // offset 24, WGSL: ambient_occlusion: f32
+    public float Occlusion;             // offset 24, WGSL: occlusion: f32
     public float _wgpuAlign0;           // offset 28, WGSL implicit padding (vec3f align 16)
     public Vector3 Emissive;            // offset 32, WGSL: emissive: vec3f
     public float _pad1;                 // offset 44, WGSL: _pad1: f32
@@ -28,10 +28,10 @@ public struct PBRMaterialParameters
 
     public static readonly PBRMaterialParameters Default = new()
     {
-        Albedo = new Vector3(0.8f, 0.8f, 0.8f),
+        BaseColor = new Vector3(0.8f, 0.8f, 0.8f),
         Metallic = 0.0f,
         Roughness = 0.5f,
-        AmbientOcclusion = 1.0f,
+        Occlusion = 1.0f,
         Emissive = Vector3.Zero
     };
 }
@@ -39,10 +39,9 @@ public struct PBRMaterialParameters
 public struct PBRMaterial : IMaterial
 {
     public PBRMaterialParameters Parameters;
-    public Entity? AlbedoTexture;
+    public Entity? BaseColorTexture;
     public Entity? NormalTexture;
-    public Entity? MetallicRoughnessTexture;
-    public Entity? AOTexture;
+    public Entity? MROTexture;
     public Entity? EmissiveTexture;
     public Entity? Sampler;
 
@@ -74,8 +73,7 @@ public struct PBRMaterial : IMaterial
             BindingLayout.Texture(2, ShaderStage.Fragment),
             BindingLayout.Texture(3, ShaderStage.Fragment),
             BindingLayout.Texture(4, ShaderStage.Fragment),
-            BindingLayout.Texture(5, ShaderStage.Fragment),
-            BindingLayout.Sampler(6, ShaderStage.Fragment)
+            BindingLayout.Sampler(5, ShaderStage.Fragment)
         ]
     ];
 
@@ -112,10 +110,9 @@ public struct PBRMaterial : IMaterial
     {
         var materialUniform = Buffers.Uniform(ctx, Parameters);
 
-        var albedoTex = AlbedoTexture ?? ctx._textures.First();
+        var baseColorTex = BaseColorTexture ?? ctx._textures.First();
         var normalTex = NormalTexture ?? ctx._textures.First();
-        var mrTex = MetallicRoughnessTexture ?? ctx._textures.First();
-        var aoTex = AOTexture ?? ctx._textures.First();
+        var mroTex = MROTexture ?? ctx._textures.First();
         var emissiveTex = EmissiveTexture ?? ctx._textures.First();
         var sampler = Sampler ?? Samplers.LinearClamp(ctx);
 
@@ -127,12 +124,11 @@ public struct PBRMaterial : IMaterial
         var group1 = Pipelines.BindGroup(ctx, bgl1,
         [
             Binding.Uniform<PBRMaterialParameters>(0, materialUniform),
-            Binding.Texture(1, albedoTex),
+            Binding.Texture(1, baseColorTex),
             Binding.Texture(2, normalTex),
-            Binding.Texture(3, mrTex),
-            Binding.Texture(4, aoTex),
-            Binding.Texture(5, emissiveTex),
-            Binding.Sampler(6, sampler)
+            Binding.Texture(3, mroTex),
+            Binding.Texture(4, emissiveTex),
+            Binding.Sampler(5, sampler)
         ]);
 
         return [null, group1];
@@ -186,11 +182,11 @@ fn vs_main(in: VSInput) -> VSOutput {
 
     public const string GBufferFragmentShader = @"
 struct MaterialUniforms {
-    albedo: vec3f,
+    base_color: vec3f,
     _pad0: f32,
     metallic: f32,
     roughness: f32,
-    ambient_occlusion: f32,
+    occlusion: f32,
     emissive: vec3f,
     _pad1: f32,
     _pad: f32,
@@ -205,18 +201,17 @@ struct FSInput {
 }
 
 struct GBufferOutput {
-    @location(0) albedo: vec4f,
+    @location(0) base_color: vec4f,
     @location(1) normal_roughness: vec4f,
     @location(2) pbr: vec4f,
 }
 
 @group(1) @binding(0) var<uniform> material: MaterialUniforms;
-@group(1) @binding(1) var albedo_tex: texture_2d<f32>;
+@group(1) @binding(1) var base_color_tex: texture_2d<f32>;
 @group(1) @binding(2) var normal_tex: texture_2d<f32>;
-@group(1) @binding(3) var metallic_roughness_tex: texture_2d<f32>;
-@group(1) @binding(4) var ao_tex: texture_2d<f32>;
-@group(1) @binding(5) var emissive_tex: texture_2d<f32>;
-@group(1) @binding(6) var tex_sampler: sampler;
+@group(1) @binding(3) var mro_tex: texture_2d<f32>;
+@group(1) @binding(4) var emissive_tex: texture_2d<f32>;
+@group(1) @binding(5) var tex_sampler: sampler;
 
 fn octahedron_encode(v: vec3f) -> vec2f {
     let l1norm = abs(v.x) + abs(v.y) + abs(v.z);
@@ -231,24 +226,23 @@ fn octahedron_encode(v: vec3f) -> vec2f {
 
 @fragment
 fn fs_main(in: FSInput) -> GBufferOutput {
-    let albedo_sample = textureSample(albedo_tex, tex_sampler, in.uv).rgb;
-    let mr_sample = textureSample(metallic_roughness_tex, tex_sampler, in.uv);
-    let ao_sample = textureSample(ao_tex, tex_sampler, in.uv).r;
+    let base_color_sample = textureSample(base_color_tex, tex_sampler, in.uv).rgb;
+    let mro_sample = textureSample(mro_tex, tex_sampler, in.uv);
     let emissive_sample = textureSample(emissive_tex, tex_sampler, in.uv).rgb;
 
-    let albedo_color = albedo_sample * in.color * material.albedo;
-    let metallic = mr_sample.b * material.metallic;
-    let roughness = mr_sample.g * material.roughness;
-    let ao = ao_sample * material.ambient_occlusion;
+    let base_color = base_color_sample * in.color * material.base_color;
+    let metallic = mro_sample.r * material.metallic;
+    let roughness = mro_sample.g * material.roughness;
+    let occlusion = mro_sample.b * material.occlusion;
     let emissive = emissive_sample + material.emissive;
 
     let N = normalize(in.world_normal);
     let encoded_normal = octahedron_encode(N);
 
     var out: GBufferOutput;
-    out.albedo = vec4f(albedo_color, 1.0);
+    out.base_color = vec4f(base_color, 1.0);
     out.normal_roughness = vec4f(encoded_normal, roughness, 0.0);
-    out.pbr = vec4f(metallic, ao, emissive.r, 1.0);
+    out.pbr = vec4f(metallic, occlusion, emissive.r, 1.0);
     return out;
 }
 ";

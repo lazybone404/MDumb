@@ -223,7 +223,7 @@ public sealed class ExampleApp : IDisposable
         // Default textures for PBR material (avoids reading from G-buffer targets)
         var defaultWhite = CreateDefaultTextureView(255, 255, 255, 255);
         var defaultNormal = CreateDefaultTextureView(128, 128, 255, 255);
-        var defaultMR = CreateDefaultTextureView(0, 255, 0, 255);
+        var defaultMRO = CreateDefaultTextureView(0, 255, 255, 255);     // R=Metallic, G=Roughness, B=Occlusion
         var defaultBlack = CreateDefaultTextureView(0, 0, 0, 255);
 
         // PBR material
@@ -231,16 +231,15 @@ public sealed class ExampleApp : IDisposable
         {
             Parameters = new PBRMaterialParameters
             {
-                Albedo = Vector3.One,
+                BaseColor = Vector3.One,
                 Metallic = 0.0f,
                 Roughness = 0.5f,
-                AmbientOcclusion = 1.0f,
+                Occlusion = 1.0f,
                 Emissive = Vector3.Zero
             },
-            AlbedoTexture = defaultWhite,
+            BaseColorTexture = defaultWhite,
             NormalTexture = defaultNormal,
-            MetallicRoughnessTexture = defaultMR,
-            AOTexture = defaultWhite,
+            MROTexture = defaultMRO,
             EmissiveTexture = defaultBlack,
             Sampler = Samplers.LinearClamp(_graphics)
         };
