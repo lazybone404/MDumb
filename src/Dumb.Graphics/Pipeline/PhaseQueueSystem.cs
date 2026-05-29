@@ -12,21 +12,15 @@ public sealed class PhaseQueueSystem : ExtractSystemBase
     private readonly GraphicsContext _ctx;
     private readonly CameraSyncSystem _cameraSync;
     private readonly TransformSyncSystem _transformSync;
-    private readonly LightSyncSystem _lightSync;
-
-    private readonly Dictionary<int, Engine.Mesh.MeshData> _meshRegistry = [];
-    private readonly Dictionary<int, Entity> _gpuMeshMap = [];
-    private readonly Dictionary<int, Entity> _gpuMaterialMap = [];
+    private readonly GpuMeshRegistry _meshRegistry;
 
     private readonly HashSet<int> _seenIds = [];
-    private readonly List<int> _removedIds = [];
 
     private Entity? _frameBindGroup;
     private int _frameBindGroupKey;
     private Entity? _frameBindGroupLayout;
 
     public BinnedRenderPhase OpaquePhase { get; } = new();
-    public SortedRenderPhase TransparentPhase { get; } = new();
 
     public Entity? FrameBindGroupLayout
     {
@@ -34,57 +28,35 @@ public sealed class PhaseQueueSystem : ExtractSystemBase
         set => _frameBindGroupLayout = value;
     }
 
+    public GpuMeshRegistry MeshRegistry => _meshRegistry;
+
     public PhaseQueueSystem(
         GraphicsContext ctx,
         CameraSyncSystem cameraSync,
         TransformSyncSystem transformSync,
-        LightSyncSystem lightSync)
+        GpuMeshRegistry meshRegistry)
         : base(Matchers.Any, extractMatcher: Matchers.Of<Engine.Mesh.VisibleEntity>())
     {
         _ctx = ctx;
         _cameraSync = cameraSync;
         _transformSync = transformSync;
-        _lightSync = lightSync;
-    }
-
-    public void RegisterMesh(Entity engineEntity, Engine.Mesh.MeshData meshData)
-    {
-        _meshRegistry[engineEntity.Id.Value] = meshData;
-    }
-
-    public void RegisterMaterial(Entity engineEntity, Entity gpuMaterialEntity)
-    {
-        _gpuMaterialMap[engineEntity.Id.Value] = gpuMaterialEntity;
-    }
-
-    public void UnregisterEntity(Entity engineEntity)
-    {
-        var id = engineEntity.Id.Value;
-        _meshRegistry.Remove(id);
-        if (_gpuMeshMap.Remove(id, out var gpuMesh))
-            Mesh.Release(_ctx, gpuMesh);
-        if (_gpuMaterialMap.Remove(id, out var gpuMat))
-            Materials.Release(_ctx, gpuMat);
+        _meshRegistry = meshRegistry;
     }
 
     public override void Execute(World world, IEntityQuery query, IEntityQuery extract)
     {
         ReturnPooledBindGroups();
         OpaquePhase.Clear();
-        TransparentPhase.Clear();
         _seenIds.Clear();
 
         extract.ForSlice((Entity entity, ref Engine.Mesh.VisibleEntity visible) =>
         {
             _seenIds.Add(entity.Id.Value);
 
-            if (!_meshRegistry.TryGetValue(entity.Id.Value, out var meshData))
+            if (!_meshRegistry.TryGetOrCreateMesh(entity, out var gpuMesh))
                 return;
 
-            if (!TryGetOrCreateGpuMesh(entity.Id.Value, meshData, out var gpuMesh))
-                return;
-
-            if (!_gpuMaterialMap.TryGetValue(entity.Id.Value, out var gpuMaterial))
+            if (!_meshRegistry.TryGetMaterial(entity, out var gpuMaterial))
                 return;
 
             if (!_transformSync.TryGetOffset(entity, out var modelOffset))
@@ -115,7 +87,7 @@ public sealed class PhaseQueueSystem : ExtractSystemBase
             ), binKey);
         });
 
-        CleanupRemovedEntities();
+        _meshRegistry.CleanupRemoved(_seenIds);
     }
 
     private void ReturnPooledBindGroups()
@@ -157,43 +129,5 @@ public sealed class PhaseQueueSystem : ExtractSystemBase
         _frameBindGroupKey = bindGroupKey;
 
         return _frameBindGroup;
-    }
-
-    private bool TryGetOrCreateGpuMesh(int entityId, Engine.Mesh.MeshData data, out Entity gpuMesh)
-    {
-        if (_gpuMeshMap.TryGetValue(entityId, out gpuMesh!))
-            return true;
-
-        try
-        {
-            gpuMesh = Mesh.Create(_ctx, data);
-            _gpuMeshMap[entityId] = gpuMesh;
-            return true;
-        }
-        catch
-        {
-            gpuMesh = null!;
-            return false;
-        }
-    }
-
-    private void CleanupRemovedEntities()
-    {
-        _removedIds.Clear();
-
-        foreach (var id in _gpuMeshMap.Keys)
-            if (!_seenIds.Contains(id)) _removedIds.Add(id);
-
-        foreach (var id in _gpuMaterialMap.Keys)
-            if (!_seenIds.Contains(id) && !_removedIds.Contains(id)) _removedIds.Add(id);
-
-        foreach (var id in _removedIds)
-        {
-            if (_gpuMeshMap.Remove(id, out var gpuMesh))
-                Mesh.Release(_ctx, gpuMesh);
-            if (_gpuMaterialMap.Remove(id, out var gpuMat))
-                Materials.Release(_ctx, gpuMat);
-            _meshRegistry.Remove(id);
-        }
     }
 }

@@ -41,7 +41,7 @@ public sealed class DeferredLightingNode : RenderNode
 
     public override void DeclareResources()
     {
-        Inputs.Add(new ResourceHandle(_gbuffer.RT0View, "GBuffer_Albedo"));
+        Inputs.Add(new ResourceHandle(_gbuffer.RT0View, "GBuffer_BaseColor"));
         Inputs.Add(new ResourceHandle(_gbuffer.RT1View, "GBuffer_NormalRoughness"));
         Inputs.Add(new ResourceHandle(_gbuffer.RT2View, "GBuffer_PBR"));
         Inputs.Add(new ResourceHandle(_gbuffer.DepthView, "GBuffer_Depth"));
@@ -56,7 +56,7 @@ public sealed class DeferredLightingNode : RenderNode
         if (!_materialCreated)
         {
             _sampler = Samplers.LinearClamp(_ctx);
-            CreatePipelineResources(BuildMaterialConfig(camBuf));
+            (_pipeline, _pipelineLayout) = DeferredLightingMaterial.CreatePipeline(_ctx, _surfaceFormat);
             _materialCreated = true;
         }
 
@@ -111,24 +111,6 @@ public sealed class DeferredLightingNode : RenderNode
             CameraBuffer = camBuf,
             LightBuffer = _lightSync.LightBuffer,
         };
-    }
-
-    private void CreatePipelineResources(DeferredLightingMaterial matCfg)
-    {
-        var shader = matCfg.GetShader(_ctx);
-
-        var bgls = DeferredLightingMaterial.BindGroupLayouts;
-        var bglEntities = new Entity[bgls.Length];
-        for (var i = 0; i < bgls.Length; i++)
-            bglEntities[i] = Pipelines.BindGroupLayout(_ctx, bgls[i]);
-
-        _pipelineLayout = Pipelines.Layout(_ctx, bglEntities);
-
-        var vertLayouts = Dumb.Graphics.Mesh.ToVertexBufferLayouts(
-            DeferredLightingMaterial.VertexDescriptor.Streams);
-
-        _pipeline = Pipelines.Render(_ctx, shader, _pipelineLayout,
-            _surfaceFormat, null, vertLayouts, blend: null);
     }
 
     public override void Execute(World world, RenderContext renderCtx)

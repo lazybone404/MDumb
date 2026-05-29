@@ -43,6 +43,31 @@ public struct DeferredLightingMaterial : IMaterial
 
     public static TextureFormat[] ColorFormats => [TextureFormat.Rgba8Unorm];
 
+    /// <summary>
+    /// Create the deferred lighting render pipeline and pipeline layout.
+    /// Returns (pipeline, pipelineLayout).
+    /// </summary>
+    public static (Entity pipeline, Entity pipelineLayout) CreatePipeline(
+        GraphicsContext ctx, TextureFormat surfaceFormat)
+    {
+        var shader = Shaders.Wgsl(ctx, FullScreenVertexShader + LightingFragmentShader);
+
+        var bgls = BindGroupLayouts;
+        var bglEntities = new Entity[bgls.Length];
+        for (var i = 0; i < bgls.Length; i++)
+            bglEntities[i] = Pipelines.BindGroupLayout(ctx, bgls[i]);
+
+        var pipelineLayout = Pipelines.Layout(ctx, bglEntities);
+
+        var vertLayouts = Mesh.ToVertexBufferLayouts(
+            VertexDescriptor.Streams);
+
+        var pipeline = Pipelines.Render(ctx, shader, pipelineLayout,
+            surfaceFormat, null, vertLayouts, blend: null);
+
+        return (pipeline, pipelineLayout);
+    }
+
     public Entity GetShader(GraphicsContext ctx)
     {
         if (_cachedShader is { Host: not null } s)

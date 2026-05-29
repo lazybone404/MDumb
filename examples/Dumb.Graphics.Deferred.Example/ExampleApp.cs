@@ -7,9 +7,11 @@ using Dumb.Engine.Lighting;
 using Dumb.Engine.Mesh;
 using Dumb.Engine.Transform;
 using Dumb.Graphics;
+using Dumb.Graphics.Config;
 using Dumb.Graphics.Pipeline;
 using Dumb.Graphics.Pipeline.Nodes;
 using Dumb.Graphics.Material;
+using Dumb.Engine.Render;
 using Sia;
 using Silk.NET.WebGPU;
 using RenderPipeline = Dumb.Graphics.Pipeline.RenderPipeline;
@@ -28,11 +30,9 @@ public sealed class ExampleApp : IDisposable
     private const int NativeWidth = 1280;
     private const int NativeHeight = 720;
 
-    // ── Core ──────────────────────────────────────────────────────
     private readonly GraphicsContext _graphics;
     private readonly World _engineWorld;
 
-    // ── Platform ──────────────────────────────────────────────────
 #if !BROWSER
     private Entity _window;
     private SystemStage _engineStage;
@@ -40,23 +40,15 @@ public sealed class ExampleApp : IDisposable
 #endif
     private GraphicsSurface _surface;
 
-    // ── Sync systems ──────────────────────────────────────────────
     private Entity _cameraEntity;
-    private CameraSyncSystem _cameraSync;
-    private TransformSyncSystem _transformSync;
-    private LightSyncSystem _lightSync;
-    private PhaseQueueSystem _phaseQueue;
-
-    // ── Pipeline ──────────────────────────────────────────────────
     private GBuffer _gbuffer;
     private RenderPipeline _pipeline;
     private DeferredLightingNode _deferredLightingNode;
+    private GpuMeshRegistry _meshRegistry;
 
-    // ── Scene ─────────────────────────────────────────────────────
     private Entity _pbrMaterialEntity;
     private readonly List<Entity> _meshEntities = [];
 
-    // ── State ─────────────────────────────────────────────────────
     private int _frame;
     private bool _disposed;
 
@@ -141,7 +133,7 @@ public sealed class ExampleApp : IDisposable
 #endif
 
         CreatePipeline();
-        CreateSceneResources();
+        CreateScene();
 
 #if BROWSER
         StartBrowserAnimationLoop();
@@ -175,7 +167,7 @@ public sealed class ExampleApp : IDisposable
 #endif
     }
 
-    // ── Pipeline setup ────────────────────────────────────────────
+    //Pipeline ──────────────────────────────────────────────────
 
     private void CreatePipeline()
     {
@@ -185,30 +177,36 @@ public sealed class ExampleApp : IDisposable
             Camera.CreateFreeLook(new Vector3(0, 2, 0), 8f, MathF.PI / 4f, MathF.PI / 6f),
             new LocalTransform { Position = new Vector3(0, 3, -8) }));
 
-        _cameraSync = new CameraSyncSystem(_graphics);
-        _transformSync = new TransformSyncSystem(_graphics);
-        _lightSync = new LightSyncSystem(_graphics);
-        _phaseQueue = new PhaseQueueSystem(_graphics, _cameraSync, _transformSync, _lightSync);
+        var cameraSync = new CameraSyncSystem(_graphics);
+        var transformSync = new TransformSyncSystem(_graphics);
+        var lightSync = new LightSyncSystem(_graphics);
+        _meshRegistry = new GpuMeshRegistry(_graphics);
 
-        _pipeline = new RenderPipeline(_graphics, _cameraSync, _transformSync, _lightSync, _phaseQueue);
+        var settingsSystem = new RenderSettingsSystem(_graphics);
+
+        var phaseQueue = new PhaseQueueSystem(_graphics, cameraSync, transformSync, _meshRegistry);
+        var config = PipelineConfig.Default;
+
+        _pipeline = new RenderPipeline(_graphics, config,
+            cameraSync, transformSync, lightSync, settingsSystem, phaseQueue);
 
         _deferredLightingNode = new DeferredLightingNode(
-            _graphics, _cameraSync, _lightSync, _gbuffer, _surface.Format);
+            _graphics, cameraSync, lightSync, _gbuffer, _surface.Format);
 
-        _pipeline.Graph.AddNode(new GBufferPassNode(_graphics, _phaseQueue, _gbuffer));
+        _pipeline.Graph.AddNode(new GBufferPassNode(_graphics, phaseQueue, _gbuffer));
         _pipeline.Graph.AddNode(_deferredLightingNode);
 
-        var compileResult = _pipeline.Graph.Compile();
-        if (!compileResult.Success)
-            foreach (var err in compileResult.Errors)
+        var result = _pipeline.Graph.Compile();
+        if (!result.Success)
+            foreach (var err in result.Errors)
                 Console.WriteLine($"[Graph Error] {err}");
-        foreach (var warn in compileResult.Warnings)
+        foreach (var warn in result.Warnings)
             Console.WriteLine($"[Graph Warning] {warn}");
     }
 
-    // ── Scene creation ────────────────────────────────────────────
+    //Scene ─────────────────────────────────────────────────────
 
-    private void CreateSceneResources()
+    private void CreateScene()
     {
         // Lights
         _engineWorld.Create(HList.From(
@@ -220,10 +218,16 @@ public sealed class ExampleApp : IDisposable
             Light.PointLight(new Vector3(0.2f, 0.4f, 1.0f), 10.0f, 8.0f),
             new LocalTransform { Position = new Vector3(0, 2, 0) }));
 
-        // Default textures for PBR material (avoids reading from G-buffer targets)
+        // Global default render volume — ECS components define settings
+        _engineWorld.Create(HList.From(
+            Engine.Render.RenderVolume.Global(priority: -100f),
+            new Engine.Render.ShadowSettings(),
+            new Engine.Render.PostProcessSettings()));
+
+        // Default textures for PBR material
         var defaultWhite = CreateDefaultTextureView(255, 255, 255, 255);
         var defaultNormal = CreateDefaultTextureView(128, 128, 255, 255);
-        var defaultMRO = CreateDefaultTextureView(0, 255, 255, 255);     // R=Metallic, G=Roughness, B=Occlusion
+        var defaultMRO = CreateDefaultTextureView(0, 255, 255, 255);
         var defaultBlack = CreateDefaultTextureView(0, 0, 0, 255);
 
         // PBR material
@@ -247,7 +251,7 @@ public sealed class ExampleApp : IDisposable
 
         ref var matData = ref _pbrMaterialEntity.Get<MaterialResourceData>();
         ref var plData = ref matData.PipelineLayout.Get<PipelineLayoutData>();
-        _phaseQueue.FrameBindGroupLayout = plData.BindGroupLayouts![0];
+        _pipeline.PhaseQueue.FrameBindGroupLayout = plData.BindGroupLayouts![0];
 
         // Geometry
         AddFloor(new Vector3(-5, 0, -5), new Vector3(5, 0, -5),
@@ -260,12 +264,11 @@ public sealed class ExampleApp : IDisposable
         AddBox(new Vector3(0, 2.5f, -2), 0.7f, new Vector3(0.9f, 0.7f, 0.2f));
         AddBox(new Vector3(0, 2.5f, 2), 0.7f, new Vector3(0.8f, 0.2f, 0.8f));
 
-        // Register all entities with the PBR material
         foreach (var entity in _meshEntities)
-            _phaseQueue.RegisterMaterial(entity, _pbrMaterialEntity);
+            _meshRegistry.RegisterMaterial(entity, _pbrMaterialEntity);
     }
 
-    // ── Per-frame ─────────────────────────────────────────────────
+    //Per-frame ─────────────────────────────────────────────────
 
     public void TickFrame(float elapsed)
     {
@@ -306,7 +309,7 @@ public sealed class ExampleApp : IDisposable
     }
 #endif
 
-    // ── Geometry helpers ──────────────────────────────────────────
+    //Geometry ──────────────────────────────────────────────────
 
     private void AddBox(Vector3 center, float size, Vector3 color)
     {
@@ -358,11 +361,11 @@ public sealed class ExampleApp : IDisposable
             new LocalTransform { Position = position, Scale = scale },
             new GlobalTransform { Value = local }));
 
-        _phaseQueue.RegisterMesh(entity, data);
+        _meshRegistry.RegisterMesh(entity, data);
         _meshEntities.Add(entity);
     }
 
-    // ── Default texture helper ────────────────────────────────────
+    //Default texture ───────────────────────────────────────────
 
     private unsafe Entity CreateDefaultTextureView(byte r, byte g, byte b, byte a)
     {
@@ -394,7 +397,7 @@ public sealed class ExampleApp : IDisposable
         return view;
     }
 
-    // ── Platform: surface ─────────────────────────────────────────
+    //Platform ──────────────────────────────────────────────────
 
 #if !BROWSER
     private unsafe void CreateSurface()
@@ -456,8 +459,6 @@ public sealed class ExampleApp : IDisposable
     }
 #endif
 
-    // ── Platform: browser loop ────────────────────────────────────
-
 #if BROWSER
     private unsafe void StartBrowserAnimationLoop()
     {
@@ -468,7 +469,7 @@ public sealed class ExampleApp : IDisposable
     }
 #endif
 
-    // ── Error callback ────────────────────────────────────────────
+    //Error callback ────────────────────────────────────────────
 
     private unsafe void SetupErrorCallback()
     {
@@ -485,7 +486,7 @@ public sealed class ExampleApp : IDisposable
         Console.WriteLine($"[WGPU {type}] {msg}");
     }
 
-    // ── Dispose ───────────────────────────────────────────────────
+    //Dispose ───────────────────────────────────────────────────
 
     public void Dispose()
     {

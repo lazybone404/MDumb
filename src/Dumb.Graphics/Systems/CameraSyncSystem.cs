@@ -8,9 +8,10 @@ namespace Dumb.Graphics;
 public sealed class CameraSyncSystem : ExtractSystemBase
 {
     private readonly GraphicsContext _ctx;
-    private readonly Dictionary<int, Entity> _buffers = []; // entity ID → GPU buffer
+    private readonly Dictionary<int, Entity> _buffers = [];
     private readonly HashSet<int> _seenIds = [];
     private readonly List<int> _removedIds = [];
+    private int _lastExtractVersion = -1;
 
     public CameraSyncSystem(GraphicsContext ctx)
         : base(Matchers.Any, extractMatcher: Matchers.Of<Engine.Cameras.Camera>())
@@ -20,9 +21,11 @@ public sealed class CameraSyncSystem : ExtractSystemBase
 
     public Entity GetUniformBuffer(Entity cameraEntity)
     {
-        return _buffers.TryGetValue(cameraEntity.Id.Value, out var buffer)
-            ? buffer
-            : throw new KeyNotFoundException("Camera entity has no uniform buffer.");
+        var id = cameraEntity.Id.Value;
+        if (_buffers.TryGetValue(id, out var buffer))
+            return buffer;
+        return _buffers[id] = Buffers.Create(_ctx, (ulong)Unsafe.SizeOf<CameraUniforms>(),
+            BufferUsage.Uniform | BufferUsage.CopyDst);
     }
 
     public bool TryGetUniformBuffer(Entity cameraEntity, [MaybeNullWhen(false)] out Entity buffer)
@@ -44,6 +47,11 @@ public sealed class CameraSyncSystem : ExtractSystemBase
 
     public override void Execute(World world, IEntityQuery query, IEntityQuery extract)
     {
+        // Skip extraction if no camera entities were added/removed
+        if (extract.Version == _lastExtractVersion)
+            return;
+        _lastExtractVersion = extract.Version;
+
         _seenIds.Clear();
 
         extract.ForSlice((Entity entity, ref Engine.Cameras.Camera camera) =>
@@ -58,11 +66,9 @@ public sealed class CameraSyncSystem : ExtractSystemBase
                 _buffers[id] = buffer;
             }
 
-            var uniforms = CameraUniforms.From(camera);
-            Buffers.Write(_ctx, buffer, uniforms);
+            Buffers.Write(_ctx, buffer, CameraUniforms.From(camera));
         });
 
-        // Release buffers for entities that no longer have a Camera component
         _removedIds.Clear();
         foreach (var (id, buffer) in _buffers)
         {

@@ -457,13 +457,9 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4f {
     {
         var view = Matrix4x4.CreateRotationZ((float)Math.Sin(time * 0.3) * 0.15f);
         var proj = Matrix4x4.CreateOrthographicOffCenter(-1, 1, -1, 1, -1, 1);
-        var cameraUniforms = new CameraUniforms
-        {
-            ViewProjection = view * proj,
-            View = view,
-            Projection = proj,
-            CameraPosition = Vector3.Zero
-        };
+        Matrix4x4.Invert(view, out var viewInv);
+        Matrix4x4.Invert(proj, out var projInv);
+        var cameraUniforms = new CameraUniforms(view * proj, view, proj, Vector3.Zero, viewInv, projInv);
         Buffers.Write(_graphics, _cameraBuffer, cameraUniforms);
 
         var frameInfo = new Vector4(time, 0, OffscreenWidth, OffscreenHeight);

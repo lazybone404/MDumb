@@ -134,7 +134,7 @@ public struct PBRMaterial : IMaterial
         return [null, group1];
     }
 
-    // ── WGSL Shaders ────────────────────────────────────────────
+
 
     public const string GBufferVertexShader = @"
 struct CameraUniforms {

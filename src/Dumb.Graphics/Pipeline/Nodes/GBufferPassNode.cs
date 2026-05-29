@@ -18,7 +18,7 @@ public sealed class GBufferPassNode : RenderNode
 
     public override void DeclareResources()
     {
-        Outputs.Add(new ResourceHandle(_gbuffer.RT0View, "GBuffer_Albedo"));
+        Outputs.Add(new ResourceHandle(_gbuffer.RT0View, "GBuffer_BaseColor"));
         Outputs.Add(new ResourceHandle(_gbuffer.RT1View, "GBuffer_NormalRoughness"));
         Outputs.Add(new ResourceHandle(_gbuffer.RT2View, "GBuffer_PBR"));
         Outputs.Add(new ResourceHandle(_gbuffer.DepthView, "GBuffer_Depth"));
