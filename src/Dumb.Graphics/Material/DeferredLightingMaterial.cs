@@ -136,7 +136,7 @@ public struct DeferredLightingMaterial : IMaterial
         @group(0) @binding(0) var<uniform> camera: CameraUniforms;
 
         @group(1) @binding(0) var gbuffer_sampler: sampler;
-        @group(1) @binding(1) var albedo_tex: texture_2d<f32>;
+        @group(1) @binding(1) var base_color_tex: texture_2d<f32>;
         @group(1) @binding(2) var normal_roughness_tex: texture_2d<f32>;
         @group(1) @binding(3) var pbr_tex: texture_2d<f32>;
         @group(1) @binding(4) var depth_tex: texture_depth_2d;
@@ -218,18 +218,18 @@ public struct DeferredLightingMaterial : IMaterial
 
         @fragment
         fn fs_main(@builtin(position) screen_pos: vec4f) -> @location(0) vec4f {
-            let uv = screen_pos.xy / vec2f(textureDimensions(albedo_tex, 0));
-            let albedo_sample = textureSample(albedo_tex, gbuffer_sampler, uv);
+            let uv = screen_pos.xy / vec2f(textureDimensions(base_color_tex, 0));
+            let base_color_sample = textureSample(base_color_tex, gbuffer_sampler, uv);
             let nr_sample = textureSample(normal_roughness_tex, gbuffer_sampler, uv);
             let pbr_sample = textureSample(pbr_tex, gbuffer_sampler, uv);
             let depth = textureSample(depth_tex, gbuffer_sampler, uv);
 
-            let albedo = albedo_sample.rgb;
+            let base_color = base_color_sample.rgb;
             let normal = octahedron_decode(nr_sample.rg);
             let roughness = nr_sample.b;
             let metallic = pbr_sample.r;
-            let ao = pbr_sample.g;
-            let emissive = pbr_sample.b * albedo;
+            let occlusion = pbr_sample.g;
+            let emissive = pbr_sample.b * base_color;
 
             // Reconstruct world position from depth
             let clip = vec4f(uv * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
@@ -240,18 +240,18 @@ public struct DeferredLightingMaterial : IMaterial
 
             var color = vec3f(0.0);
             // Ambient term
-            color += albedo * 0.03 * ao;
+            color += base_color * 0.03 * occlusion;
 
             for (var i = 0u; i < 64u; i++) {
                 let light = lights[i];
                 if light.intensity <= 0.0 { continue; }
 
                 if light.light_type == LIGHT_DIRECTIONAL {
-                    color += evaluate_directional(light, normal, V, roughness, metallic, albedo);
+                    color += evaluate_directional(light, normal, V, roughness, metallic, base_color);
                 } else if light.light_type == LIGHT_POINT {
-                    color += evaluate_point(light, world_pos, normal, V, roughness, metallic, albedo);
+                    color += evaluate_point(light, world_pos, normal, V, roughness, metallic, base_color);
                 } else if light.light_type == LIGHT_SPOT {
-                    color += evaluate_spot(light, world_pos, normal, V, roughness, metallic, albedo);
+                    color += evaluate_spot(light, world_pos, normal, V, roughness, metallic, base_color);
                 }
             }
 
