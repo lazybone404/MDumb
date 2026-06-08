@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk.WebAssembly">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-browser</TargetFramework>
+    <RuntimeIdentifier>browser-wasm</RuntimeIdentifier>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <OverrideHtmlAssetPlaceholders>true</OverrideHtmlAssetPlaceholders>
+    <WasmEnableSIMD>true</WasmEnableSIMD>
+    <WasmNativeStrip>true</WasmNativeStrip>
+    <WasmBuildNative>true</WasmBuildNative>
+    <WasmNativeWorkload>true</WasmNativeWorkload>
+    <WasmEnableThreads>false</WasmEnableThreads>
+    <WasmCachePath Condition="'$(OS)' == 'Windows_NT'">$(SystemDrive)\wasm-cache-$(MSBuildProjectName)</WasmCachePath>
+    <EmccExtraLDFlags>-sUSE_WEBGPU=1 -sALLOW_MEMORY_GROWTH -sUSE_GLFW=3 -sUSE_OGG=1 -lopenal -sTOTAL_MEMORY=67108864 -sOFFSCREENCANVAS_SUPPORT</EmccExtraLDFlags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="obj_desktop\**" />
+    <EmbeddedResource Remove="obj_desktop\**" />
+    <None Remove="obj_desktop\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <StaticWebAssetFingerprintPattern Include="JS" Pattern="*.js" Expression="#[.{fingerprint}]!" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Dumb.Emscripten\Dumb.Emscripten.csproj" />
+    <ProjectReference Include="..\..\src\Dumb.Engine\Dumb.Engine.csproj" />
+  </ItemGroup>
+
+  <Target Name="AddBrowserNativeModules" BeforeTargets="_GenerateManagedToNative" DependsOnTargets="PrepareForWasmBuildNative">
+    <ItemGroup>
+      <_WasmPInvokeModules Include="__Internal_emscripten" />
+      <_WasmPInvokeModules Include="__Internal_glfw" />
+      <_WasmPInvokeModules Include="__Internal_al" />
+    </ItemGroup>
+  </Target>
+</Project>

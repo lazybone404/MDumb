@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dumb.Engine Example</title>
+    <link rel="icon" href="data:," />
+    <link rel="preload" id="webassembly" />
+    <link rel="stylesheet" href="style.css" />
+    <script type="importmap"></script>
+    <script type="module" src="main#[.{fingerprint}].js"></script>
+</head>
+<body>
+    <main>
+        <header>
+            <p class="eyebrow">Dumb.Engine</p>
+            <h1>Input / Audio Test Demo</h1>
+        </header>
+
+        <section class="demo-shell">
+            <canvas id="canvas" width="640" height="360" tabindex="0"></canvas>
+            <aside>
+                <h2>Controls</h2>
+                <dl>
+                    <div><dt><kbd>Space</kbd> / South</dt><dd>Pulse action and ping sound</dd></div>
+                    <div><dt><kbd>Mouse Left</kbd> / RB</dt><dd>Fire action and higher ping</dd></div>
+                    <div><dt><kbd>A</kbd><kbd>D</kbd> / Axis 0</dt><dd>Drone pitch and horizontal input</dd></div>
+                    <div><dt><kbd>W</kbd><kbd>S</kbd> / Axis 1</dt><dd>Vertical input and pitch trim</dd></div>
+                    <div><dt><kbd>Wheel</kbd></dt><dd>OpenAL gain through engine input</dd></div>
+                    <div><dt><kbd>M</kbd><kbd>R</kbd></dt><dd>Mute or reset audio state</dd></div>
+                </dl>
+                <pre id="status">Loading .NET WebAssembly...</pre>
+            </aside>
+        </section>
+    </main>
+</body>
+</html>

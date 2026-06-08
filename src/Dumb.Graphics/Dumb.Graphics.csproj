@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>net10.0;net10.0-browser</TargetFrameworks>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <IsPackable>true</IsPackable>
+    <PackageId>Dumb.Graphics</PackageId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Sia" Version="2.0.16" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Dumb.Engine\Dumb.Engine.csproj" />
+    <ProjectReference Include="..\Dumb.Emscripten\Dumb.Emscripten.csproj" Condition="'$(TargetFramework)' == 'net10.0-browser'" />
+    <PackageReference Include="Silk.NET.WebGPU" Version="2.23.0" />
+  </ItemGroup>
+
+</Project>

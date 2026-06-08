@@ -1,0 +1,19 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Dumb.Emscripten/Dumb.Emscripten.csproj" />
+    <Project Path="src/Dumb.Engine/Dumb.Engine.csproj" />
+    <Project Path="src/Dumb.Engine.Benchmark/Dumb.Engine.Benchmark.csproj" />
+    <Project Path="src/Dumb.Engine.Tests/Dumb.Engine.Tests.csproj" />
+    <Project Path="src/Dumb.Graphics/Dumb.Graphics.csproj" />
+    <Project Path="src/Dumb.Graphics.Tests/Dumb.Graphics.Tests.csproj" />
+  </Folder>
+  <Folder Name="/examples/">
+    <Project Path="examples/Dumb.Emscripten.Example/Dumb.Emscripten.Example.csproj" />
+    <Project Path="examples/Dumb.Engine.Example/Dumb.Engine.Example.Browser.csproj" />
+    <Project Path="examples/Dumb.Engine.Example/Dumb.Engine.Example.csproj" />
+    <Project Path="examples/Dumb.Graphics.Example/Dumb.Graphics.Example.Browser.csproj" />
+    <Project Path="examples/Dumb.Graphics.Example/Dumb.Graphics.Example.csproj" />
+    <Project Path="examples/Dumb.Graphics.Unlit.Example/Dumb.Graphics.Unlit.Example.Browser.csproj" />
+    <Project Path="examples/Dumb.Graphics.Unlit.Example/Dumb.Graphics.Unlit.Example.csproj" />
+  </Folder>
+</Solution>
