@@ -30,9 +30,9 @@ public sealed class GpuMeshRegistry
         var id = engineEntity.Id.Value;
         _meshDataMap.Remove(id);
         if (_gpuMeshMap.Remove(id, out var gpuMesh))
-            Mesh.Release(_ctx, gpuMesh);
+            _ctx.Meshes.Release(gpuMesh);
         if (_gpuMaterialMap.Remove(id, out var gpuMat))
-            Materials.Release(_ctx, gpuMat);
+            _ctx.Materials.Release(gpuMat);
     }
 
     public bool TryGetMaterial(Entity engineEntity, out Entity gpuMaterial)
@@ -54,7 +54,7 @@ public sealed class GpuMeshRegistry
 
         try
         {
-            gpuMesh = Mesh.Create(_ctx, meshData);
+            gpuMesh = _ctx.Meshes.Create(meshData);
             _gpuMeshMap[id] = gpuMesh;
             return true;
         }
@@ -76,9 +76,9 @@ public sealed class GpuMeshRegistry
         foreach (var id in _removedIds)
         {
             if (_gpuMeshMap.Remove(id, out var gpuMesh))
-                Mesh.Release(_ctx, gpuMesh);
+                _ctx.Meshes.Release(gpuMesh);
             if (_gpuMaterialMap.Remove(id, out var gpuMat))
-                Materials.Release(_ctx, gpuMat);
+                _ctx.Materials.Release(gpuMat);
             _meshDataMap.Remove(id);
         }
     }

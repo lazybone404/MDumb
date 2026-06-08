@@ -3,7 +3,13 @@ using Sia;
 
 namespace Dumb.Graphics;
 
-public struct BufferData
+/// <summary>
+/// 标记接口 — 实现此接口的 struct 必须包含 public nint NativePtr 和 public int RefCount 字段。
+/// 用于 GpuResourceManager&lt;TData&gt; 的泛型约束。
+/// </summary>
+public interface IGpuResource { }
+
+public struct BufferData : IGpuResource
 {
     public nint NativePtr;
     public ulong Size;
@@ -11,7 +17,7 @@ public struct BufferData
     public int RefCount;
 }
 
-public struct TextureData
+public struct TextureData : IGpuResource
 {
     public nint NativePtr;
     public Extent3D Size;
@@ -22,39 +28,39 @@ public struct TextureData
     public int RefCount;
 }
 
-public struct TextureViewData
+public struct TextureViewData : IGpuResource
 {
     public nint NativePtr;
     public Entity Texture;
     public int RefCount;
 }
 
-public struct SamplerData
+public struct SamplerData : IGpuResource
 {
     public nint NativePtr;
     public int RefCount;
 }
 
-public struct ShaderData
+public struct ShaderData : IGpuResource
 {
     public nint NativePtr;
     public int RefCount;
 }
 
-public struct BindGroupLayoutData
+public struct BindGroupLayoutData : IGpuResource
 {
     public nint NativePtr;
     public int RefCount;
 }
 
-public struct BindGroupData
+public struct BindGroupData : IGpuResource
 {
     public nint NativePtr;
     public Entity Layout;
     public int RefCount;
 }
 
-public struct PipelineLayoutData
+public struct PipelineLayoutData : IGpuResource
 {
     public nint NativePtr;
     public uint BindGroupLayoutCount;
@@ -62,7 +68,7 @@ public struct PipelineLayoutData
     public int RefCount;
 }
 
-public struct RenderPipelineData
+public struct RenderPipelineData : IGpuResource
 {
     public nint NativePtr;
     public Entity VertexShader;
@@ -71,7 +77,7 @@ public struct RenderPipelineData
     public int RefCount;
 }
 
-public struct ComputePipelineData
+public struct ComputePipelineData : IGpuResource
 {
     public nint NativePtr;
     public Entity ComputeShader;

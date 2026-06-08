@@ -42,15 +42,15 @@ public static class Skinning
     public static Entity CreateBoneBuffer(GraphicsContext ctx, ReadOnlySpan<Matrix4x4> bindPose)
     {
         var size = (ulong)(bindPose.Length * sizeof(float) * 16);
-        var buffer = Buffers.Create(ctx, size,
+        var buffer = ctx.Buffers.Create(size,
             BufferUsage.Storage | BufferUsage.CopyDst);
 
-        Buffers.Write(ctx, buffer, 0, MemoryMarshal.AsBytes(bindPose));
+        ctx.Buffers.Write(buffer, 0, MemoryMarshal.AsBytes(bindPose));
         return buffer;
     }
 
     public static void UpdateBoneBuffer(GraphicsContext ctx, Entity buffer, ReadOnlySpan<Matrix4x4> matrices)
     {
-        Buffers.Write(ctx, buffer, 0, MemoryMarshal.AsBytes(matrices));
+        ctx.Buffers.Write(buffer, 0, MemoryMarshal.AsBytes(matrices));
     }
 }

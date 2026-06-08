@@ -55,7 +55,7 @@ public sealed class DeferredLightingNode : RenderNode
 
         if (!_materialCreated)
         {
-            _sampler = Samplers.LinearClamp(_ctx);
+            _sampler = _ctx.Samplers.LinearClamp();
             (_pipeline, _pipelineLayout) = DeferredLightingMaterial.CreatePipeline(_ctx, _surfaceFormat);
             _materialCreated = true;
         }
@@ -77,7 +77,7 @@ public sealed class DeferredLightingNode : RenderNode
         Entity? newFrameBg = null;
         if (frameBgl?.Host != null)
         {
-            newFrameBg = Pipelines.BindGroup(_ctx, frameBgl,
+            newFrameBg = _ctx.Pipelines.BindGroup(frameBgl,
             [
                 Binding.Buffer(0, camBuf, (nuint)Unsafe.SizeOf<CameraUniforms>()),
             ]);
@@ -85,11 +85,11 @@ public sealed class DeferredLightingNode : RenderNode
 
         // Release old only after new are created successfully.
         if (_cachedGroup1 is { } old1)
-            Pipelines.ReleaseBindGroup(_ctx, old1);
+            _ctx.Pipelines.ReleaseBindGroup(old1);
         if (_cachedGroup2 is { } old2)
-            Pipelines.ReleaseBindGroup(_ctx, old2);
+            _ctx.Pipelines.ReleaseBindGroup(old2);
         if (_cachedFrameBg is { } oldFg)
-            Pipelines.ReleaseBindGroup(_ctx, oldFg);
+            _ctx.Pipelines.ReleaseBindGroup(oldFg);
 
         _cachedGroup1 = newGroup1;
         _cachedGroup2 = newGroup2;

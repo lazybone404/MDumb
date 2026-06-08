@@ -47,7 +47,7 @@ public struct FlatColorMaterial : IMaterial
     public Entity GetShader(GraphicsContext ctx)
     {
         if (_cachedShader is { Host: not null } s) return s;
-        _cachedShader = Shaders.Wgsl(ctx, FlatColorShader);
+        _cachedShader = ctx.Shaders.Wgsl(FlatColorShader);
         return _cachedShader!;
     }
 
@@ -57,7 +57,7 @@ public struct FlatColorMaterial : IMaterial
         var bgl0 = plData.BindGroupLayouts?[0]
             ?? throw new InvalidOperationException("Pipeline layout missing bind group layout 0.");
 
-        var group0 = Pipelines.BindGroup(ctx, bgl0,
+        var group0 = ctx.Pipelines.BindGroup(bgl0,
         [
             Binding.Uniform<CameraUniforms>(0, CameraBuffer),
             Binding.Uniform<Vector4>(1, FrameBuffer),
@@ -314,12 +314,12 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4f {
 
     private unsafe void CreateSceneResources(TextureFormat presentFormat)
     {
-        _cameraBuffer = Buffers.Uniform<CameraUniforms>(_graphics);
-        _frameBuffer = Buffers.Uniform<Vector4>(_graphics);
-        _computeBuffer = Buffers.Storage<float>(_graphics, 4, BufferUsage.CopySrc);
+        _cameraBuffer = _graphics.Buffers.Uniform<CameraUniforms>();
+        _frameBuffer = _graphics.Buffers.Uniform<Vector4>();
+        _computeBuffer = _graphics.Buffers.Storage<float>(4, BufferUsage.CopySrc);
 
         var meshData = MeshData.FromVertices(TriangleVertices(), TriangleIndices());
-        _mesh = Mesh.Create(_graphics, meshData);
+        _mesh = _graphics.Meshes.Create(meshData);
 
         var materialDesc = new FlatColorMaterial
         {
@@ -327,44 +327,44 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4f {
             FrameBuffer = _frameBuffer,
             ComputeBuffer = _computeBuffer
         };
-        _material = Materials.Create(_graphics, materialDesc);
+        _material = _graphics.Materials.Create(materialDesc);
 
-        _renderTarget = Textures.RenderTarget(_graphics, OffscreenWidth, OffscreenHeight, ColorFormat);
-        _depthTexture = Textures.Create2D(_graphics, OffscreenWidth, OffscreenHeight, DepthFormat, TextureUsage.RenderAttachment);
-        _depthView = Textures.CreateView2D(_graphics, _depthTexture, DepthFormat);
+        _renderTarget = _graphics.Textures.RenderTarget(OffscreenWidth, OffscreenHeight, ColorFormat);
+        _depthTexture = _graphics.Textures.Create2D(OffscreenWidth, OffscreenHeight, DepthFormat, TextureUsage.RenderAttachment);
+        _depthView = _graphics.Textures.CreateView2D(_depthTexture, DepthFormat);
 
-        var sampler = Samplers.LinearClamp(_graphics);
+        var sampler = _graphics.Samplers.LinearClamp();
 
-        var computeShader = Shaders.Wgsl(_graphics, ComputeShader);
-        var textureShader = Shaders.Wgsl(_graphics, TextureShader);
+        var computeShader = _graphics.Shaders.Wgsl(ComputeShader);
+        var textureShader = _graphics.Shaders.Wgsl(TextureShader);
 
-        var computeLayout = Pipelines.BindGroupLayout(_graphics,
+        var computeLayout = _graphics.Pipelines.BindGroupLayout(
         [
             BindingLayout.StorageBuffer(0, ShaderStage.Compute, 4 * sizeof(float))
         ]);
-        var computePipelineLayout = Pipelines.Layout(_graphics, [computeLayout]);
-        _computeBindGroup = Pipelines.BindGroup(_graphics, computeLayout,
+        var computePipelineLayout = _graphics.Pipelines.Layout([computeLayout]);
+        _computeBindGroup = _graphics.Pipelines.BindGroup(computeLayout,
         [
             Binding.Storage<float>(0, _computeBuffer, 4)
         ]);
-        _computePipeline = Pipelines.Compute(_graphics, computeShader, computePipelineLayout);
+        _computePipeline = _graphics.Pipelines.Compute(computeShader, computePipelineLayout);
 
-        _textureUniformBuffer = Buffers.Uniform<Vector4>(_graphics);
+        _textureUniformBuffer = _graphics.Buffers.Uniform<Vector4>();
 
-        var textureLayout = Pipelines.BindGroupLayout(_graphics,
+        var textureLayout = _graphics.Pipelines.BindGroupLayout(
         [
             BindingLayout.Sampler(0, ShaderStage.Fragment),
             BindingLayout.Texture(1, ShaderStage.Fragment),
             BindingLayout.UniformBuffer(2, ShaderStage.Fragment, 16)
         ]);
-        var texturePipelineLayout = Pipelines.Layout(_graphics, [textureLayout]);
-        _textureBindGroup = Pipelines.BindGroup(_graphics, textureLayout,
+        var texturePipelineLayout = _graphics.Pipelines.Layout([textureLayout]);
+        _textureBindGroup = _graphics.Pipelines.BindGroup(textureLayout,
         [
             Binding.Sampler(0, sampler),
             Binding.Texture(1, _renderTarget.View),
             Binding.Uniform<Vector4>(2, _textureUniformBuffer)
         ]);
-        _texturePipeline = Pipelines.Render(_graphics, textureShader, texturePipelineLayout, presentFormat);
+        _texturePipeline = _graphics.Pipelines.Render(textureShader, texturePipelineLayout, presentFormat);
     }
 
 #if !BROWSER
@@ -460,11 +460,11 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4f {
         Matrix4x4.Invert(view, out var viewInv);
         Matrix4x4.Invert(proj, out var projInv);
         var cameraUniforms = new CameraUniforms(view * proj, view, proj, Vector3.Zero, viewInv, projInv);
-        Buffers.Write(_graphics, _cameraBuffer, cameraUniforms);
+        _graphics.Buffers.Write(_cameraBuffer, cameraUniforms);
 
         var frameInfo = new Vector4(time, 0, OffscreenWidth, OffscreenHeight);
-        Buffers.Write(_graphics, _frameBuffer, frameInfo);
-        Buffers.Write(_graphics, _textureUniformBuffer, frameInfo);
+        _graphics.Buffers.Write(_frameBuffer, frameInfo);
+        _graphics.Buffers.Write(_textureUniformBuffer, frameInfo);
 
         using var frame = _graphics.BeginFrame(_surface);
         if (frame.View.Host == null)
@@ -523,7 +523,7 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4f {
         if (matData.BindGroups[0] is { Host: not null } bg0)
             pass.SetBindGroup(0, bg0);
 
-        Mesh.Draw(pass, _mesh);
+        _graphics.Meshes.Draw(pass, _mesh);
     }
 
     private unsafe void DrawTexturePass(

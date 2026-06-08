@@ -245,9 +245,9 @@ public sealed class ExampleApp : IDisposable
             NormalTexture = defaultNormal,
             MROTexture = defaultMRO,
             EmissiveTexture = defaultBlack,
-            Sampler = Samplers.LinearClamp(_graphics)
+            Sampler = _graphics.Samplers.LinearClamp()
         };
-        _pbrMaterialEntity = Materials.Create(_graphics, mat);
+        _pbrMaterialEntity = _graphics.Materials.Create(mat);
 
         ref var matData = ref _pbrMaterialEntity.Get<MaterialResourceData>();
         ref var plData = ref matData.PipelineLayout.Get<PipelineLayoutData>();
@@ -334,7 +334,7 @@ public sealed class ExampleApp : IDisposable
         Face(new Vector3(-h,  h,  h), new Vector3(size, 0, 0), new Vector3(0, 0, -size),  Vector3.UnitY);
         Face(new Vector3(-h, -h, -h), new Vector3(size, 0, 0), new Vector3(0, 0, size),  -Vector3.UnitY);
 
-        AddMesh(MeshData.FromVertices(verts, indices, PBRMaterial.VertexDescriptor.Streams[0].Elements),
+        AddMesh(MeshData.FromVertices(verts, indices, PBRMaterial.Config.VertexDescriptor.Streams[0].Elements),
             center, Vector3.One);
     }
 
@@ -349,7 +349,7 @@ public sealed class ExampleApp : IDisposable
             new MeshVertex(v2, normal, color),
             new MeshVertex(v3, normal, color),
         ], [0u, 1, 2, 0, 2, 3],
-        PBRMaterial.VertexDescriptor.Streams[0].Elements);
+        PBRMaterial.Config.VertexDescriptor.Streams[0].Elements);
         AddMesh(data, center, Vector3.One);
     }
 
@@ -369,9 +369,9 @@ public sealed class ExampleApp : IDisposable
 
     private unsafe Entity CreateDefaultTextureView(byte r, byte g, byte b, byte a)
     {
-        var texture = Textures.Create2D(_graphics, 1, 1, TextureFormat.Rgba8Unorm,
+        var texture = _graphics.Textures.Create2D(1, 1, TextureFormat.Rgba8Unorm,
             TextureUsage.TextureBinding | TextureUsage.CopyDst);
-        var view = Textures.CreateView2D(_graphics, texture, TextureFormat.Rgba8Unorm);
+        var view = _graphics.Textures.CreateView2D(texture, TextureFormat.Rgba8Unorm);
 
         byte* pixels = stackalloc byte[4];
         pixels[0] = r;

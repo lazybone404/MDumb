@@ -131,7 +131,7 @@ public readonly record struct VertexBufferLayoutDescriptor
     }
 }
 
-public static unsafe class Pipelines
+public unsafe class PipelineManager
 {
     private static readonly StencilFaceState DefaultStencilFace = new()
     {
@@ -141,11 +141,16 @@ public static unsafe class Pipelines
         PassOp = StencilOperation.Keep
     };
 
+    private readonly GraphicsContext _ctx;
+
+    public PipelineManager(GraphicsContext ctx)
+    {
+        _ctx = ctx;
+    }
+
     // --- BindGroupLayout ---
 
-    public static Entity BindGroupLayout(
-        GraphicsContext ctx,
-        ReadOnlySpan<BindingLayout> entries)
+    public Entity BindGroupLayout(ReadOnlySpan<BindingLayout> entries)
     {
         var nativeEntries = stackalloc BindGroupLayoutEntry[entries.Length];
         for (var i = 0; i < entries.Length; i++)
@@ -157,29 +162,28 @@ public static unsafe class Pipelines
             Entries = nativeEntries,
             Label = null
         };
-        return CreateBindGroupLayout(ctx, descriptor);
+        return CreateBindGroupLayout(descriptor);
     }
 
-    public static Entity CreateBindGroupLayout(GraphicsContext ctx, BindGroupLayoutDescriptor descriptor)
+    public Entity CreateBindGroupLayout(BindGroupLayoutDescriptor descriptor)
     {
-        var native = ctx.Device.CreateBindGroupLayout(ctx.NativeDevice, &descriptor);
-        return ctx._bindGroupLayouts.Create(HList.From(new BindGroupLayoutData { NativePtr = native, RefCount = 1 }));
+        var native = _ctx.Device.CreateBindGroupLayout(_ctx.NativeDevice, &descriptor);
+        return _ctx._bindGroupLayouts.Create(HList.From(new BindGroupLayoutData { NativePtr = native, RefCount = 1 }));
     }
 
-    public static void ReleaseBindGroupLayout(GraphicsContext ctx, Entity bgl)
+    public void ReleaseBindGroupLayout(Entity bgl)
     {
         ref var data = ref bgl.Get<BindGroupLayoutData>();
         if (Interlocked.Decrement(ref data.RefCount) == 0)
         {
-            ctx.Device.ReleaseBindGroupLayout(data.NativePtr);
+            _ctx.Device.ReleaseBindGroupLayout(data.NativePtr);
             bgl.Destroy();
         }
     }
 
     // --- BindGroup ---
 
-    public static Entity BindGroup(
-        GraphicsContext ctx,
+    public Entity BindGroup(
         Entity layout,
         ReadOnlySpan<Binding> bindings)
     {
@@ -218,17 +222,16 @@ public static unsafe class Pipelines
             Entries = entries,
             Label = null
         };
-        return CreateBindGroup(ctx, descriptor, layout);
+        return CreateBindGroup(descriptor, layout);
     }
 
-    public static Entity CreateBindGroup(
-        GraphicsContext ctx, BindGroupDescriptor descriptor, Entity layout)
+    public Entity CreateBindGroup(BindGroupDescriptor descriptor, Entity layout)
     {
         if (layout.Host == null)
             throw new InvalidOperationException("BindGroupLayout entity not alive.");
 
-        var native = ctx.Device.CreateBindGroup(ctx.NativeDevice, &descriptor);
-        return ctx._bindGroups.Create(HList.From(new BindGroupData
+        var native = _ctx.Device.CreateBindGroup(_ctx.NativeDevice, &descriptor);
+        return _ctx._bindGroups.Create(HList.From(new BindGroupData
         {
             NativePtr = native,
             Layout = layout,
@@ -236,21 +239,19 @@ public static unsafe class Pipelines
         }));
     }
 
-    public static void ReleaseBindGroup(GraphicsContext ctx, Entity bindGroup)
+    public void ReleaseBindGroup(Entity bindGroup)
     {
         ref var bg = ref bindGroup.Get<BindGroupData>();
         if (Interlocked.Decrement(ref bg.RefCount) == 0)
         {
-            ctx.Device.ReleaseBindGroup(bg.NativePtr);
+            _ctx.Device.ReleaseBindGroup(bg.NativePtr);
             bindGroup.Destroy();
         }
     }
 
     // --- PipelineLayout ---
 
-    public static Entity Layout(
-        GraphicsContext ctx,
-        ReadOnlySpan<Entity> bindGroupLayouts)
+    public Entity Layout(ReadOnlySpan<Entity> bindGroupLayouts)
     {
         var nativeLayouts = stackalloc BindGroupLayout*[bindGroupLayouts.Length];
         for (var i = 0; i < bindGroupLayouts.Length; i++)
@@ -262,20 +263,20 @@ public static unsafe class Pipelines
             BindGroupLayouts = nativeLayouts,
             Label = null
         };
-        return CreatePipelineLayout(ctx, descriptor, bindGroupLayouts);
+        return CreatePipelineLayout(descriptor, bindGroupLayouts);
     }
 
-    public static Entity CreatePipelineLayout(
-        GraphicsContext ctx, PipelineLayoutDescriptor descriptor,
+    public Entity CreatePipelineLayout(
+        PipelineLayoutDescriptor descriptor,
         ReadOnlySpan<Entity> bindGroupLayouts)
     {
-        var native = ctx.Device.CreatePipelineLayout(ctx.NativeDevice, &descriptor);
+        var native = _ctx.Device.CreatePipelineLayout(_ctx.NativeDevice, &descriptor);
 
         var handles = bindGroupLayouts.Length > 0
             ? bindGroupLayouts.ToArray()
             : null;
 
-        return ctx._pipelineLayouts.Create(HList.From(new PipelineLayoutData
+        return _ctx._pipelineLayouts.Create(HList.From(new PipelineLayoutData
         {
             NativePtr = native,
             BindGroupLayoutCount = (uint)bindGroupLayouts.Length,
@@ -284,7 +285,7 @@ public static unsafe class Pipelines
         }));
     }
 
-    public static void ReleasePipelineLayout(GraphicsContext ctx, Entity pipelineLayout)
+    public void ReleasePipelineLayout(Entity pipelineLayout)
     {
         ref var pl = ref pipelineLayout.Get<PipelineLayoutData>();
         if (Interlocked.Decrement(ref pl.RefCount) == 0)
@@ -294,36 +295,28 @@ public static unsafe class Pipelines
                 foreach (var bgl in bgls)
                 {
                     if (bgl.Host != null)
-                        ReleaseBindGroupLayout(ctx, bgl);
+                        ReleaseBindGroupLayout(bgl);
                 }
             }
-            ctx.Device.ReleasePipelineLayout(pl.NativePtr);
+            _ctx.Device.ReleasePipelineLayout(pl.NativePtr);
             pipelineLayout.Destroy();
         }
     }
 
     // --- RenderPipeline (with dedup) ---
 
-    public static Entity Render(
-        GraphicsContext ctx,
+    public Entity Render(
         Entity shader,
         Entity layout,
         TextureFormat colorFormat,
         string vertexEntryPoint = "vs_main",
         string fragmentEntryPoint = "fs_main")
     {
-        return Render(
-            ctx,
-            shader,
-            layout,
-            colorFormat,
-            ReadOnlySpan<VertexBufferLayoutDescriptor>.Empty,
-            vertexEntryPoint,
-            fragmentEntryPoint);
+        return Render(shader, layout, colorFormat,
+            ReadOnlySpan<VertexBufferLayoutDescriptor>.Empty, vertexEntryPoint, fragmentEntryPoint);
     }
 
-    public static Entity Render(
-        GraphicsContext ctx,
+    public Entity Render(
         Entity shader,
         Entity layout,
         TextureFormat colorFormat,
@@ -331,11 +324,10 @@ public static unsafe class Pipelines
         string vertexEntryPoint = "vs_main",
         string fragmentEntryPoint = "fs_main")
     {
-        return Render(ctx, shader, layout, colorFormat, null, vertexBuffers, null, vertexEntryPoint, fragmentEntryPoint);
+        return Render(shader, layout, colorFormat, null, vertexBuffers, null, vertexEntryPoint, fragmentEntryPoint);
     }
 
-    public static Entity Render(
-        GraphicsContext ctx,
+    public Entity Render(
         Entity shader,
         Entity layout,
         TextureFormat colorFormat,
@@ -405,15 +397,14 @@ public static unsafe class Pipelines
                         };
                         attrOff += desc.Attributes.Length;
                     }
-                    return RenderCore(ctx, shader, layout, colorFormat, vsPtr, fsPtr, bufPtr, (uint)vertexBuffers.Length, bsPtr, dsPtr);
+                    return RenderCore(shader, layout, colorFormat, vsPtr, fsPtr, bufPtr, (uint)vertexBuffers.Length, bsPtr, dsPtr);
                 }
             }
-            return RenderCore(ctx, shader, layout, colorFormat, vsPtr, fsPtr, null, 0, bsPtr, dsPtr);
+            return RenderCore(shader, layout, colorFormat, vsPtr, fsPtr, null, 0, bsPtr, dsPtr);
         }
     }
 
-    private static Entity RenderCore(
-        GraphicsContext ctx,
+    private Entity RenderCore(
         Entity shader,
         Entity layout,
         TextureFormat colorFormat,
@@ -467,11 +458,10 @@ public static unsafe class Pipelines
             Label = null
         };
 
-        return CreateRenderPipeline(ctx, &descriptor, shader, shader, layout);
+        return CreateRenderPipeline(&descriptor, shader, shader, layout);
     }
 
-    public static Entity CreateRenderPipeline(
-        GraphicsContext ctx,
+    public Entity CreateRenderPipeline(
         RenderPipelineDescriptor* descriptor,
         Entity vertexShader,
         Entity fragmentShader,
@@ -487,7 +477,7 @@ public static unsafe class Pipelines
         var loId = layout.Id.Value;
 
         // Dedup: search existing pipelines for matching shader+layout combination.
-        foreach (var entity in ctx._renderPipelines)
+        foreach (var entity in _ctx._renderPipelines)
         {
             ref var existing = ref entity.Get<RenderPipelineData>();
             if (existing.VertexShader.Id.Value == vsId &&
@@ -499,8 +489,8 @@ public static unsafe class Pipelines
             }
         }
 
-        var native = ctx.Device.CreateRenderPipeline(ctx.NativeDevice, descriptor);
-        return ctx._renderPipelines.Create(HList.From(new RenderPipelineData
+        var native = _ctx.Device.CreateRenderPipeline(_ctx.NativeDevice, descriptor);
+        return _ctx._renderPipelines.Create(HList.From(new RenderPipelineData
         {
             NativePtr = native,
             VertexShader = vertexShader,
@@ -512,8 +502,7 @@ public static unsafe class Pipelines
 
     // --- RenderPipeline MRT (multiple color targets) ---
 
-    public static Entity RenderMRT(
-        GraphicsContext ctx,
+    public Entity RenderMRT(
         Entity shader,
         Entity layout,
         ReadOnlySpan<TextureFormat> colorFormats,
@@ -639,25 +628,24 @@ public static unsafe class Pipelines
                     Label = null
                 };
 
-                return CreateRenderPipeline(ctx, &descriptor, shader, shader, layout);
+                return CreateRenderPipeline(&descriptor, shader, shader, layout);
             }
         }
     }
 
-    public static void ReleaseRenderPipeline(GraphicsContext ctx, Entity pipeline)
+    public void ReleaseRenderPipeline(Entity pipeline)
     {
         ref var rp = ref pipeline.Get<RenderPipelineData>();
         if (Interlocked.Decrement(ref rp.RefCount) == 0)
         {
-            ctx.Device.ReleaseRenderPipeline(rp.NativePtr);
+            _ctx.Device.ReleaseRenderPipeline(rp.NativePtr);
             pipeline.Destroy();
         }
     }
 
     // --- ComputePipeline (with dedup) ---
 
-    public static Entity Compute(
-        GraphicsContext ctx,
+    public Entity Compute(
         Entity shader,
         Entity layout,
         string entryPoint = "cs_main")
@@ -677,12 +665,11 @@ public static unsafe class Pipelines
                 },
                 Label = null
             };
-            return CreateComputePipeline(ctx, &descriptor, shader, layout);
+            return CreateComputePipeline(&descriptor, shader, layout);
         }
     }
 
-    public static Entity CreateComputePipeline(
-        GraphicsContext ctx,
+    public Entity CreateComputePipeline(
         ComputePipelineDescriptor* descriptor,
         Entity computeShader,
         Entity layout)
@@ -694,7 +681,7 @@ public static unsafe class Pipelines
         var loId = layout.Id.Value;
 
         // Dedup.
-        foreach (var entity in ctx._computePipelines)
+        foreach (var entity in _ctx._computePipelines)
         {
             ref var existing = ref entity.Get<ComputePipelineData>();
             if (existing.ComputeShader.Id.Value == csId && existing.Layout.Id.Value == loId)
@@ -704,8 +691,8 @@ public static unsafe class Pipelines
             }
         }
 
-        var native = ctx.Device.CreateComputePipeline(ctx.NativeDevice, descriptor);
-        return ctx._computePipelines.Create(HList.From(new ComputePipelineData
+        var native = _ctx.Device.CreateComputePipeline(_ctx.NativeDevice, descriptor);
+        return _ctx._computePipelines.Create(HList.From(new ComputePipelineData
         {
             NativePtr = native,
             ComputeShader = computeShader,
@@ -714,12 +701,12 @@ public static unsafe class Pipelines
         }));
     }
 
-    public static void ReleaseComputePipeline(GraphicsContext ctx, Entity pipeline)
+    public void ReleaseComputePipeline(Entity pipeline)
     {
         ref var cp = ref pipeline.Get<ComputePipelineData>();
         if (Interlocked.Decrement(ref cp.RefCount) == 0)
         {
-            ctx.Device.ReleaseComputePipeline(cp.NativePtr);
+            _ctx.Device.ReleaseComputePipeline(cp.NativePtr);
             pipeline.Destroy();
         }
     }

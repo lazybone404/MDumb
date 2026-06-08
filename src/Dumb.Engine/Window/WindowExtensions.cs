@@ -4,10 +4,14 @@ namespace Dumb.Engine.Window;
 
 public static class WindowExtensions
 {
-    public static Entity CreateWindow(this World world, WindowDescriptor descriptor)
+    public static Entity CreateWindow(
+        this World world,
+        WindowDescriptor descriptor,
+        IWindowBackend? backend = null,
+        Input.IInputBackend? inputBackend = null)
     {
-        var window = new GlfwWindowBackend(descriptor);
-        var input = new Input.GlfwInputBackend(window);
+        var window = backend ?? new GlfwWindowBackend(descriptor);
+        var input = inputBackend ?? new Input.GlfwInputBackend(window);
 
         return world.Create(HList.From(
             new WindowState(

@@ -94,12 +94,12 @@ public sealed class LightSyncSystem : ExtractSystemBase
         // Resize buffer if needed
         if (_lightBuffer?.Host == null)
         {
-            _lightBuffer = Buffers.Create(_ctx,
+            _lightBuffer = _ctx.Buffers.Create(
                 (ulong)(GPULight.MaxLights * GPULight.Size),
                 BufferUsage.Uniform | BufferUsage.CopyDst);
         }
 
-        Buffers.Write(_ctx, _lightBuffer!, 0, _lightData);
+        _ctx.Buffers.Write(_lightBuffer!, 0, _lightData);
 
         // Clean up removed entities
         _removedIds.Clear();

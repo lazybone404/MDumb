@@ -275,28 +275,29 @@ public sealed class ExampleApp : IDisposable
         AddBox(new Vector3(0, 2.5f, -2), 0.7f, new Vector3(0.9f, 0.7f, 0.2f));
         AddBox(new Vector3(0, 2.5f, 2), 0.7f, new Vector3(0.8f, 0.2f, 0.8f));
 
-        _depthTexture = Textures.Create2D(_graphics, NativeWidth, NativeHeight,
+        _depthTexture = _graphics.Textures.Create2D(NativeWidth, NativeHeight,
             TextureFormat.Depth32float, TextureUsage.RenderAttachment);
-        _depthView = Textures.CreateDepthView(_graphics, _depthTexture);
+        _depthView = _graphics.Textures.CreateDepthView(_depthTexture);
 
         _syncStage.Tick();
 
         var unlitMat = new UnlitMaterial { Parameters = UnlitMaterialParameters.Default };
         var shader = unlitMat.GetShader(_graphics);
-        var bglEntities = new Entity[UnlitMaterial.BindGroupLayouts.Length];
+        var config = UnlitMaterial.Config;
+        var bglEntities = new Entity[config.BindGroupLayouts.Length];
         for (var i = 0; i < bglEntities.Length; i++)
-            bglEntities[i] = Pipelines.BindGroupLayout(_graphics, UnlitMaterial.BindGroupLayouts[i]);
-        var layout = Pipelines.Layout(_graphics, bglEntities);
-        var vertLayouts = Dumb.Graphics.Mesh.ToVertexBufferLayouts(UnlitMaterial.VertexDescriptor.Streams);
-        var pipeline = Pipelines.Render(_graphics, shader, layout,
-            _surface.Format, TextureFormat.Depth32float, vertLayouts, UnlitMaterial.Blend);
+            bglEntities[i] = _graphics.Pipelines.BindGroupLayout(config.BindGroupLayouts[i]);
+        var layout = _graphics.Pipelines.Layout(bglEntities);
+        var vertLayouts = MeshManager.ToVertexBufferLayouts(config.VertexDescriptor.Streams);
+        var pipeline = _graphics.Pipelines.Render(shader, layout,
+            _surface.Format, TextureFormat.Depth32float, vertLayouts, config.Blend);
         var bindGroups = unlitMat.CreateBindGroups(_graphics, layout);
         _unlitMaterial = _graphics.CreateMaterialResource(pipeline, layout, bindGroups);
 
         var cameraBuffer = _cameraSync.GetUniformBuffer(_cameraEntity);
         ref var matData = ref _unlitMaterial.Get<MaterialResourceData>();
         var bgl0 = matData.PipelineLayout.Get<PipelineLayoutData>().BindGroupLayouts![0];
-        _frameBindGroup = Pipelines.BindGroup(_graphics, bgl0,
+        _frameBindGroup = _graphics.Pipelines.BindGroup(bgl0,
         [
             Binding.Uniform<CameraUniforms>(0, cameraBuffer),
             Binding.Uniform<Matrix4x4>(1, _transformSync.ModelBuffer)
@@ -343,7 +344,7 @@ public sealed class ExampleApp : IDisposable
                     continue;
                 var dynOffset = (uint)offset;
                 pass.SetBindGroup(0, _frameBindGroup, new ReadOnlySpan<uint>(&dynOffset, 1));
-                Dumb.Graphics.Mesh.Draw(pass, gpuMesh);
+                _graphics.Meshes.Draw(pass, gpuMesh);
             }
         }
 
@@ -374,7 +375,7 @@ public sealed class ExampleApp : IDisposable
         Face(new Vector3(-h,  h,  h), new Vector3(size, 0, 0), new Vector3(0, 0, -size), Vector3.UnitY);
         Face(new Vector3(-h, -h, -h), new Vector3(size, 0, 0), new Vector3(0, 0, size), -Vector3.UnitY);
 
-        AddMesh(MeshData.FromVertices(verts, indices, UnlitMaterial.VertexDescriptor.Streams[0].Elements), center, Vector3.One);
+        AddMesh(MeshData.FromVertices(verts, indices, UnlitMaterial.Config.VertexDescriptor.Streams[0].Elements), center, Vector3.One);
     }
 
     private void AddQuad(Vector3 v0, Vector3 v1, Vector3 v2, Vector3 v3,
@@ -388,13 +389,13 @@ public sealed class ExampleApp : IDisposable
             new MeshVertex(v2, normal, color),
             new MeshVertex(v3, normal, color),
         ], [0u, 1, 2, 0, 2, 3],
-        UnlitMaterial.VertexDescriptor.Streams[0].Elements);
+        UnlitMaterial.Config.VertexDescriptor.Streams[0].Elements);
         AddMesh(data, center, Vector3.One);
     }
 
     private void AddMesh(MeshData data, Vector3 position, Vector3 scale)
     {
-        var gpuMesh = Dumb.Graphics.Mesh.Create(_graphics, data);
+        var gpuMesh = _graphics.Meshes.Create(data);
         var local = Affine3D.FromTRS(position, Quaternion.Identity, scale);
         var entity = _engineWorld.Create(HList.From(
             new LocalTransform { Position = position, Scale = scale },

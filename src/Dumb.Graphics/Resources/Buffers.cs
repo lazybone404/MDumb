@@ -1,13 +1,17 @@
 using System.Runtime.InteropServices;
-using System.Threading;
 using Sia;
 using Silk.NET.WebGPU;
 
 namespace Dumb.Graphics;
 
-public static unsafe class Buffers
+public unsafe class BufferManager : GpuResourceManager<BufferData>
 {
-    public static Entity Create(GraphicsContext ctx, ulong size, BufferUsage usage)
+    public BufferManager(GraphicsContext ctx)
+        : base(ctx, ctx._buffers)
+    {
+    }
+
+    public Entity Create(ulong size, BufferUsage usage)
     {
         BufferDescriptor descriptor = new()
         {
@@ -16,93 +20,85 @@ public static unsafe class Buffers
             MappedAtCreation = false,
             Label = null
         };
-        return Create(ctx, descriptor);
+        return Create(descriptor);
     }
 
-    public static Entity Create(GraphicsContext ctx, BufferDescriptor descriptor)
+    public Entity Create(BufferDescriptor descriptor)
     {
-        var native = ctx.Device.CreateBuffer(ctx.NativeDevice, &descriptor);
-        return ctx._buffers.Create(HList.From(new BufferData
+        var native = Ctx.Device.CreateBuffer(Ctx.NativeDevice, &descriptor);
+        return CreateResource(new BufferData
         {
             NativePtr = native,
             Size = descriptor.Size,
             Usage = descriptor.Usage,
             RefCount = 1
-        }));
+        });
     }
 
-    public static void Write(GraphicsContext ctx, Entity buffer, ulong offset, ReadOnlySpan<byte> data)
+    public void Write(Entity buffer, ulong offset, ReadOnlySpan<byte> data)
     {
         ref var buf = ref buffer.Get<BufferData>();
         fixed (byte* ptr = data)
-            ctx.Command.QueueWriteBuffer(ctx.NativeQueue, buf.NativePtr, offset, ptr, (nuint)data.Length);
+            Ctx.Command.QueueWriteBuffer(Ctx.NativeQueue, buf.NativePtr, offset, ptr, (nuint)data.Length);
     }
 
-    public static void Write<T>(GraphicsContext ctx, Entity buffer, in T value, ulong offset = 0)
+    public void Write<T>(Entity buffer, in T value, ulong offset = 0)
         where T : unmanaged
     {
         fixed (T* ptr = &value)
-            Write(ctx, buffer, offset, new ReadOnlySpan<byte>(ptr, sizeof(T)));
+            Write(buffer, offset, new ReadOnlySpan<byte>(ptr, sizeof(T)));
     }
 
-    public static void Write<T>(GraphicsContext ctx, Entity buffer, ReadOnlySpan<T> values, ulong offset = 0)
+    public void Write<T>(Entity buffer, ReadOnlySpan<T> values, ulong offset = 0)
         where T : unmanaged
     {
-        Write(ctx, buffer, offset, MemoryMarshal.AsBytes(values));
+        Write(buffer, offset, MemoryMarshal.AsBytes(values));
     }
 
-    public static Entity Uniform<T>(GraphicsContext ctx)
+    public Entity Uniform<T>()
         where T : unmanaged
     {
-        return Create(ctx, (ulong)sizeof(T), BufferUsage.Uniform | BufferUsage.CopyDst);
+        return Create((ulong)sizeof(T), BufferUsage.Uniform | BufferUsage.CopyDst);
     }
 
-    public static Entity Uniform<T>(GraphicsContext ctx, in T value)
+    public Entity Uniform<T>(in T value)
         where T : unmanaged
     {
-        var buffer = Uniform<T>(ctx);
-        Write(ctx, buffer, value);
+        var buffer = Uniform<T>();
+        Write(buffer, value);
         return buffer;
     }
 
-    public static Entity Storage<T>(
-        GraphicsContext ctx,
+    public Entity Storage<T>(
         int elementCount,
         BufferUsage extraUsage = BufferUsage.None)
         where T : unmanaged
     {
-        return Create(ctx, (ulong)(sizeof(T) * elementCount), BufferUsage.Storage | BufferUsage.CopyDst | extraUsage);
+        return Create((ulong)(sizeof(T) * elementCount), BufferUsage.Storage | BufferUsage.CopyDst | extraUsage);
     }
 
-    public static Entity Vertex<T>(GraphicsContext ctx, ReadOnlySpan<T> values)
+    public Entity Vertex<T>(ReadOnlySpan<T> values)
         where T : unmanaged
     {
-        var buffer = Create(ctx, (ulong)(sizeof(T) * values.Length), BufferUsage.Vertex | BufferUsage.CopyDst);
-        Write(ctx, buffer, values);
+        var buffer = Create((ulong)(sizeof(T) * values.Length), BufferUsage.Vertex | BufferUsage.CopyDst);
+        Write(buffer, values);
         return buffer;
     }
 
-    public static Entity Index<T>(GraphicsContext ctx, ReadOnlySpan<T> values)
+    public Entity Index<T>(ReadOnlySpan<T> values)
         where T : unmanaged
     {
-        var buffer = Create(ctx, (ulong)(sizeof(T) * values.Length), BufferUsage.Index | BufferUsage.CopyDst);
-        Write(ctx, buffer, values);
+        var buffer = Create((ulong)(sizeof(T) * values.Length), BufferUsage.Index | BufferUsage.CopyDst);
+        Write(buffer, values);
         return buffer;
     }
 
-    public static void Retain(GraphicsContext ctx, Entity buffer)
-    {
-        ref var buf = ref buffer.Get<BufferData>();
-        Interlocked.Increment(ref buf.RefCount);
-    }
+    protected override ref int GetRefCountRef(ref BufferData data) => ref data.RefCount;
 
-    public static void Release(GraphicsContext ctx, Entity buffer)
+    protected override nint GetNativePtr(ref BufferData data) => data.NativePtr;
+
+    protected override void ReleaseNative(nint nativePtr)
     {
-        ref var buf = ref buffer.Get<BufferData>();
-        if (Interlocked.Decrement(ref buf.RefCount) == 0)
-        {
-            ctx.Device.ReleaseBuffer(buf.NativePtr);
-            buffer.Destroy();
-        }
+        Ctx.Device.ReleaseBuffer(nativePtr);
     }
 }

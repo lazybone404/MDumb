@@ -4,9 +4,16 @@ using Silk.NET.WebGPU;
 
 namespace Dumb.Graphics;
 
-public static class Mesh
+public class MeshManager
 {
-    public static Entity Create(GraphicsContext ctx, Engine.Mesh.MeshData data)
+    private readonly GraphicsContext _ctx;
+
+    public MeshManager(GraphicsContext ctx)
+    {
+        _ctx = ctx;
+    }
+
+    public Entity Create(Engine.Mesh.MeshData data)
     {
         if (!data.TryValidate(out var validationError))
             throw new InvalidOperationException($"Mesh validation failed: {validationError}");
@@ -16,9 +23,9 @@ public static class Mesh
         for (var i = 0; i < data.Streams.Length; i++)
         {
             var stream = data.Streams[i] ?? throw new InvalidOperationException("Mesh stream is null");
-            var buffer = Buffers.Create(ctx, (ulong)stream.Length,
+            var buffer = _ctx.Buffers.Create((ulong)stream.Length,
                 BufferUsage.Vertex | BufferUsage.CopyDst);
-            Buffers.Write(ctx, buffer, 0, stream);
+            _ctx.Buffers.Write(buffer, 0, stream);
             vertexBuffers[i] = buffer;
         }
 
@@ -26,9 +33,9 @@ public static class Mesh
         if (!data.Indices.IsEmpty)
         {
             var indicesSpan = data.Indices.GetSpan();
-            indexBuffer = Buffers.Create(ctx, (ulong)indicesSpan.Length,
+            indexBuffer = _ctx.Buffers.Create((ulong)indicesSpan.Length,
                 BufferUsage.Index | BufferUsage.CopyDst);
-            Buffers.Write(ctx, indexBuffer, 0, indicesSpan);
+            _ctx.Buffers.Write(indexBuffer, 0, indicesSpan);
         }
 
         var subMeshes = data.SubMeshes;
@@ -48,7 +55,7 @@ public static class Mesh
                 : data.VertexCount
         ).ToArray();
 
-        return ctx._meshes.Create(HList.From(new MeshResourceData
+        return _ctx._meshes.Create(HList.From(new MeshResourceData
         {
             VertexBuffers = vertexBuffers,
             VertexCounts = vertexCounts,
@@ -60,13 +67,13 @@ public static class Mesh
         }));
     }
 
-    public static void Retain(GraphicsContext ctx, Entity mesh)
+    public void Retain(Entity mesh)
     {
         ref var data = ref mesh.Get<MeshResourceData>();
         Interlocked.Increment(ref data.RefCount);
     }
 
-    public static void Release(GraphicsContext ctx, Entity mesh)
+    public void Release(Entity mesh)
     {
         ref var data = ref mesh.Get<MeshResourceData>();
         if (Interlocked.Decrement(ref data.RefCount) == 0)
@@ -74,15 +81,15 @@ public static class Mesh
             foreach (var vb in data.VertexBuffers)
             {
                 if (vb.Host != null)
-                    Buffers.Release(ctx, vb);
+                    _ctx.Buffers.Release(vb);
             }
             if (data.IndexBuffer.Host != null)
-                Buffers.Release(ctx, data.IndexBuffer);
+                _ctx.Buffers.Release(data.IndexBuffer);
             mesh.Destroy();
         }
     }
 
-    public static void Draw(RenderPass pass, Entity mesh, uint subMeshIndex = 0)
+    public void Draw(RenderPass pass, Entity mesh, uint subMeshIndex = 0)
     {
         ref var data = ref mesh.Get<MeshResourceData>();
         var sm = data.SubMeshes[subMeshIndex];
@@ -101,7 +108,7 @@ public static class Mesh
         }
     }
 
-    public static void DrawInstanced(RenderPass pass, Entity mesh, uint instanceCount, uint subMeshIndex = 0)
+    public void DrawInstanced(RenderPass pass, Entity mesh, uint instanceCount, uint subMeshIndex = 0)
     {
         ref var data = ref mesh.Get<MeshResourceData>();
         var sm = data.SubMeshes[subMeshIndex];

@@ -3,46 +3,54 @@ using Silk.NET.WebGPU;
 
 namespace Dumb.Graphics;
 
-public static class Materials
+public class MaterialManager
 {
-    public static Entity Create<T>(GraphicsContext ctx, T material)
+    private readonly GraphicsContext _ctx;
+
+    public MaterialManager(GraphicsContext ctx)
+    {
+        _ctx = ctx;
+    }
+
+    public Entity Create<T>(T material)
         where T : IMaterial
     {
-        var shader = material.GetShader(ctx);
+        var shader = material.GetShader(_ctx);
 
-        var bglDescs = T.BindGroupLayouts;
+        var config = T.Config;
+        var bglDescs = config.BindGroupLayouts;
         var bglEntities = new Entity[bglDescs.Length];
         for (var i = 0; i < bglDescs.Length; i++)
-            bglEntities[i] = Pipelines.BindGroupLayout(ctx, bglDescs[i]);
+            bglEntities[i] = _ctx.Pipelines.BindGroupLayout(bglDescs[i]);
 
-        var pipelineLayout = Pipelines.Layout(ctx, bglEntities);
+        var pipelineLayout = _ctx.Pipelines.Layout(bglEntities);
 
-        var bufferLayouts = Mesh.ToVertexBufferLayouts(T.VertexDescriptor.Streams);
+        var bufferLayouts = MeshManager.ToVertexBufferLayouts(config.VertexDescriptor.Streams);
 
-        var colorFormats = T.ColorFormats;
+        var colorFormats = config.ColorFormats;
         Entity pipeline;
         if (colorFormats.Length == 1)
         {
-            pipeline = Pipelines.Render(
-                ctx, shader, pipelineLayout,
+            pipeline = _ctx.Pipelines.Render(
+                shader, pipelineLayout,
                 colorFormats[0],
                 TextureFormat.Depth32float,
                 bufferLayouts,
-                T.Blend);
+                config.Blend);
         }
         else
         {
-            pipeline = Pipelines.RenderMRT(
-                ctx, shader, pipelineLayout,
+            pipeline = _ctx.Pipelines.RenderMRT(
+                shader, pipelineLayout,
                 colorFormats,
                 TextureFormat.Depth32float,
                 bufferLayouts,
-                T.Blend);
+                config.Blend);
         }
 
-        var bindGroups = material.CreateBindGroups(ctx, pipelineLayout);
+        var bindGroups = material.CreateBindGroups(_ctx, pipelineLayout);
 
-        return ctx._materials.Create(HList.From(new MaterialResourceData
+        return _ctx._materials.Create(HList.From(new MaterialResourceData
         {
             Pipeline = pipeline,
             PipelineLayout = pipelineLayout,
@@ -51,25 +59,25 @@ public static class Materials
         }));
     }
 
-    public static void Retain(GraphicsContext ctx, Entity material)
+    public void Retain(Entity material)
     {
         ref var data = ref material.Get<MaterialResourceData>();
         Interlocked.Increment(ref data.RefCount);
     }
 
-    public static void Release(GraphicsContext ctx, Entity material)
+    public void Release(Entity material)
     {
         ref var data = ref material.Get<MaterialResourceData>();
         if (Interlocked.Decrement(ref data.RefCount) == 0)
         {
-            Pipelines.ReleaseRenderPipeline(ctx, data.Pipeline);
-            Pipelines.ReleasePipelineLayout(ctx, data.PipelineLayout);
+            _ctx.Pipelines.ReleaseRenderPipeline(data.Pipeline);
+            _ctx.Pipelines.ReleasePipelineLayout(data.PipelineLayout);
             if (data.BindGroups != null)
             {
                 foreach (var bg in data.BindGroups)
                 {
                     if (bg?.Host != null)
-                        Pipelines.ReleaseBindGroup(ctx, bg);
+                        _ctx.Pipelines.ReleaseBindGroup(bg);
                 }
             }
             material.Destroy();

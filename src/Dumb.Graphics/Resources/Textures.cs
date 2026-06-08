@@ -11,22 +11,25 @@ public readonly record struct RenderTexture(
     uint Height,
     TextureFormat Format);
 
-public static unsafe class Textures
+public unsafe class TextureManager : GpuResourceManager<TextureData>
 {
-    public static RenderTexture RenderTarget(
-        GraphicsContext ctx,
+    public TextureManager(GraphicsContext ctx)
+        : base(ctx, ctx._textures)
+    {
+    }
+
+    public RenderTexture RenderTarget(
         uint width,
         uint height,
         TextureFormat format,
         TextureUsage usage = TextureUsage.RenderAttachment | TextureUsage.TextureBinding)
     {
-        var texture = Create2D(ctx, width, height, format, usage);
-        var view = CreateView2D(ctx, texture, format);
+        var texture = Create2D(width, height, format, usage);
+        var view = CreateView2D(texture, format);
         return new RenderTexture(texture, view, width, height, format);
     }
 
-    public static Entity Create2D(
-        GraphicsContext ctx,
+    public Entity Create2D(
         uint width,
         uint height,
         TextureFormat format,
@@ -46,13 +49,13 @@ public static unsafe class Textures
             ViewFormats = null,
             Label = null
         };
-        return Create(ctx, descriptor);
+        return Create(descriptor);
     }
 
-    public static Entity Create(GraphicsContext ctx, TextureDescriptor descriptor)
+    public Entity Create(TextureDescriptor descriptor)
     {
-        var native = ctx.Device.CreateTexture(ctx.NativeDevice, &descriptor);
-        return ctx._textures.Create(HList.From(new TextureData
+        var native = Ctx.Device.CreateTexture(Ctx.NativeDevice, &descriptor);
+        return CreateResource(new TextureData
         {
             NativePtr = native,
             Size = descriptor.Size,
@@ -61,11 +64,12 @@ public static unsafe class Textures
             MipLevelCount = descriptor.MipLevelCount,
             SampleCount = descriptor.SampleCount,
             RefCount = 1
-        }));
+        });
     }
 
-    public static Entity CreateView2D(
-        GraphicsContext ctx,
+    // Release(Entity) 继承自 GpuResourceManager<TextureData>，无需重写
+
+    public Entity CreateView2D(
         Entity texture,
         TextureFormat format,
         TextureAspect aspect = TextureAspect.All)
@@ -81,11 +85,10 @@ public static unsafe class Textures
             Aspect = aspect,
             Label = null
         };
-        return CreateView(ctx, texture, descriptor);
+        return CreateView(texture, descriptor);
     }
 
-    public static Entity CreateViewForNativeTexture(
-        GraphicsContext ctx,
+    public Entity CreateViewForNativeTexture(
         nint texture,
         TextureFormat format,
         TextureAspect aspect = TextureAspect.All)
@@ -102,8 +105,8 @@ public static unsafe class Textures
             Label = null
         };
 
-        var native = ctx.Device.CreateTextureView(texture, &descriptor);
-        return ctx._textureViews.Create(HList.From(new TextureViewData
+        var native = Ctx.Device.CreateTextureView(texture, &descriptor);
+        return Ctx._textureViews.Create(HList.From(new TextureViewData
         {
             NativePtr = native,
             Texture = null!,
@@ -111,7 +114,7 @@ public static unsafe class Textures
         }));
     }
 
-    public static Entity CreateDepthView(GraphicsContext ctx, Entity texture, TextureFormat format = TextureFormat.Depth32float)
+    public Entity CreateDepthView(Entity texture, TextureFormat format = TextureFormat.Depth32float)
     {
         TextureViewDescriptor descriptor = new()
         {
@@ -124,12 +127,12 @@ public static unsafe class Textures
             Aspect = TextureAspect.DepthOnly,
             Label = null
         };
-        return CreateView(ctx, texture, descriptor);
+        return CreateView(texture, descriptor);
     }
 
-    public static Entity WrapNativeTextureView(GraphicsContext ctx, nint textureView)
+    public Entity WrapNativeTextureView(nint textureView)
     {
-        return ctx._textureViews.Create(HList.From(new TextureViewData
+        return Ctx._textureViews.Create(HList.From(new TextureViewData
         {
             NativePtr = textureView,
             Texture = null!,
@@ -137,11 +140,11 @@ public static unsafe class Textures
         }));
     }
 
-    public static Entity CreateView(GraphicsContext ctx, Entity texture, TextureViewDescriptor descriptor)
+    public Entity CreateView(Entity texture, TextureViewDescriptor descriptor)
     {
         ref var tex = ref texture.Get<TextureData>();
-        var native = ctx.Device.CreateTextureView(tex.NativePtr, &descriptor);
-        return ctx._textureViews.Create(HList.From(new TextureViewData
+        var native = Ctx.Device.CreateTextureView(tex.NativePtr, &descriptor);
+        return Ctx._textureViews.Create(HList.From(new TextureViewData
         {
             NativePtr = native,
             Texture = texture,
@@ -149,23 +152,22 @@ public static unsafe class Textures
         }));
     }
 
-    public static void Release(GraphicsContext ctx, Entity texture)
-    {
-        ref var tex = ref texture.Get<TextureData>();
-        if (Interlocked.Decrement(ref tex.RefCount) == 0)
-        {
-            ctx.Device.ReleaseTexture(tex.NativePtr);
-            texture.Destroy();
-        }
-    }
-
-    public static void ReleaseView(GraphicsContext ctx, Entity view)
+    public void ReleaseView(Entity view)
     {
         ref var v = ref view.Get<TextureViewData>();
         if (Interlocked.Decrement(ref v.RefCount) == 0)
         {
-            ctx.Device.ReleaseTextureView(v.NativePtr);
+            Ctx.Device.ReleaseTextureView(v.NativePtr);
             view.Destroy();
         }
+    }
+
+    protected override ref int GetRefCountRef(ref TextureData data) => ref data.RefCount;
+
+    protected override nint GetNativePtr(ref TextureData data) => data.NativePtr;
+
+    protected override void ReleaseNative(nint nativePtr)
+    {
+        Ctx.Device.ReleaseTexture(nativePtr);
     }
 }

@@ -17,31 +17,29 @@ public struct DeferredLightingMaterial : IMaterial
 
     public static string Name => "DeferredLighting";
 
-    public static Engine.Mesh.MeshDescriptor VertexDescriptor => new([]);
-
-    private static readonly BindingLayout[][] s_bindGroupLayouts =
-    [
-        // Group 0: Frame
+    public static MaterialConfig Config => new()
+    {
+        VertexDescriptor = new Engine.Mesh.MeshDescriptor([]),
+        BindGroupLayouts =
         [
-            BindingLayout.UniformBuffer(0, ShaderStage.Fragment, 336),     // CameraUniforms
-        ],
-        // Group 1: G-buffer textures
-        [
-            BindingLayout.Sampler(0, ShaderStage.Fragment),
-            BindingLayout.Texture(1, ShaderStage.Fragment),
-            BindingLayout.Texture(2, ShaderStage.Fragment),
-            BindingLayout.Texture(3, ShaderStage.Fragment),
-            BindingLayout.Texture(4, ShaderStage.Fragment, TextureSampleType.Depth),
-        ],
-        // Group 2: Lights
-        [
-            BindingLayout.UniformBuffer(0, ShaderStage.Fragment, (ulong)(GPULight.MaxLights * GPULight.Size)),
+            // Group 0: Frame
+            [
+                BindingLayout.UniformBuffer(0, ShaderStage.Fragment, 336),     // CameraUniforms
+            ],
+            // Group 1: G-buffer textures
+            [
+                BindingLayout.Sampler(0, ShaderStage.Fragment),
+                BindingLayout.Texture(1, ShaderStage.Fragment),
+                BindingLayout.Texture(2, ShaderStage.Fragment),
+                BindingLayout.Texture(3, ShaderStage.Fragment),
+                BindingLayout.Texture(4, ShaderStage.Fragment, TextureSampleType.Depth),
+            ],
+            // Group 2: Lights
+            [
+                BindingLayout.UniformBuffer(0, ShaderStage.Fragment, (ulong)(GPULight.MaxLights * GPULight.Size)),
+            ]
         ]
-    ];
-
-    public static BindingLayout[][] BindGroupLayouts => s_bindGroupLayouts;
-
-    public static TextureFormat[] ColorFormats => [TextureFormat.Rgba8Unorm];
+    };
 
     /// <summary>
     /// Create the deferred lighting render pipeline and pipeline layout.
@@ -50,19 +48,19 @@ public struct DeferredLightingMaterial : IMaterial
     public static (Entity pipeline, Entity pipelineLayout) CreatePipeline(
         GraphicsContext ctx, TextureFormat surfaceFormat)
     {
-        var shader = Shaders.Wgsl(ctx, FullScreenVertexShader + LightingFragmentShader);
+        var shader = ctx.Shaders.Wgsl(FullScreenVertexShader + LightingFragmentShader);
 
-        var bgls = BindGroupLayouts;
+        var bgls = Config.BindGroupLayouts;
         var bglEntities = new Entity[bgls.Length];
         for (var i = 0; i < bgls.Length; i++)
-            bglEntities[i] = Pipelines.BindGroupLayout(ctx, bgls[i]);
+            bglEntities[i] = ctx.Pipelines.BindGroupLayout(bgls[i]);
 
-        var pipelineLayout = Pipelines.Layout(ctx, bglEntities);
+        var pipelineLayout = ctx.Pipelines.Layout(bglEntities);
 
-        var vertLayouts = Mesh.ToVertexBufferLayouts(
-            VertexDescriptor.Streams);
+        var vertLayouts = MeshManager.ToVertexBufferLayouts(
+            Config.VertexDescriptor.Streams);
 
-        var pipeline = Pipelines.Render(ctx, shader, pipelineLayout,
+        var pipeline = ctx.Pipelines.Render(shader, pipelineLayout,
             surfaceFormat, null, vertLayouts, blend: null);
 
         return (pipeline, pipelineLayout);
@@ -73,7 +71,7 @@ public struct DeferredLightingMaterial : IMaterial
         if (_cachedShader is { Host: not null } s)
             return s;
 
-        _cachedShader = Shaders.Wgsl(ctx, FullScreenVertexShader + LightingFragmentShader);
+        _cachedShader = ctx.Shaders.Wgsl(FullScreenVertexShader + LightingFragmentShader);
         return _cachedShader!;
     }
 
@@ -85,7 +83,7 @@ public struct DeferredLightingMaterial : IMaterial
         var bgl2 = plData.BindGroupLayouts?[2]
             ?? throw new InvalidOperationException("Pipeline layout missing bind group layout 2.");
 
-        var group1 = Pipelines.BindGroup(ctx, bgl1,
+        var group1 = ctx.Pipelines.BindGroup(bgl1,
         [
             Binding.Sampler(0, Sampler),
             Binding.Texture(1, GBufferRT0),
@@ -94,7 +92,7 @@ public struct DeferredLightingMaterial : IMaterial
             Binding.Texture(4, GBufferDepth),
         ]);
 
-        var group2 = Pipelines.BindGroup(ctx, bgl2,
+        var group2 = ctx.Pipelines.BindGroup(bgl2,
         [
             Binding.Buffer(0, LightBuffer, (nuint)(GPULight.MaxLights * GPULight.Size)),
         ]);

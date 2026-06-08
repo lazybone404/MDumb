@@ -123,9 +123,9 @@ public sealed class PhaseQueueSystem : ExtractSystemBase
         ];
 
         if (_frameBindGroup is { } oldBg)
-            Pipelines.ReleaseBindGroup(_ctx, oldBg);
+            _ctx.Pipelines.ReleaseBindGroup(oldBg);
 
-        _frameBindGroup = Pipelines.BindGroup(_ctx, frameBgl, bindings);
+        _frameBindGroup = _ctx.Pipelines.BindGroup(frameBgl, bindings);
         _frameBindGroupKey = bindGroupKey;
 
         return _frameBindGroup;

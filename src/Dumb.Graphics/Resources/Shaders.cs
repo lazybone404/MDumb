@@ -1,13 +1,17 @@
 using System.Text;
-using System.Threading;
 using Sia;
 using Silk.NET.WebGPU;
 
 namespace Dumb.Graphics;
 
-public static unsafe class Shaders
+public unsafe class ShaderManager : GpuResourceManager<ShaderData>
 {
-    public static Entity Wgsl(GraphicsContext ctx, string source)
+    public ShaderManager(GraphicsContext ctx)
+        : base(ctx, ctx._shaders)
+    {
+    }
+
+    public Entity Wgsl(string source)
     {
         var bytes = Encoding.UTF8.GetBytes(source + '\0');
         fixed (byte* sourcePtr = bytes)
@@ -29,27 +33,26 @@ public static unsafe class Shaders
                 Hints = null,
                 Label = null
             };
-            return Create(ctx, descriptor);
+            return Create(descriptor);
         }
     }
 
-    public static Entity Create(GraphicsContext ctx, ShaderModuleDescriptor descriptor)
+    public Entity Create(ShaderModuleDescriptor descriptor)
     {
-        var native = ctx.Device.CreateShaderModule(ctx.NativeDevice, &descriptor);
-        return ctx._shaders.Create(HList.From(new ShaderData
+        var native = Ctx.Device.CreateShaderModule(Ctx.NativeDevice, &descriptor);
+        return CreateResource(new ShaderData
         {
             NativePtr = native,
             RefCount = 1
-        }));
+        });
     }
 
-    public static void Release(GraphicsContext ctx, Entity shader)
+    protected override ref int GetRefCountRef(ref ShaderData data) => ref data.RefCount;
+
+    protected override nint GetNativePtr(ref ShaderData data) => data.NativePtr;
+
+    protected override void ReleaseNative(nint nativePtr)
     {
-        ref var s = ref shader.Get<ShaderData>();
-        if (Interlocked.Decrement(ref s.RefCount) == 0)
-        {
-            ctx.Device.ReleaseShaderModule(s.NativePtr);
-            shader.Destroy();
-        }
+        Ctx.Device.ReleaseShaderModule(nativePtr);
     }
 }

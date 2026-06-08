@@ -1,17 +1,20 @@
-using System.Threading;
 using Sia;
 using Silk.NET.WebGPU;
 
 namespace Dumb.Graphics;
 
-public static unsafe class Samplers
+public unsafe class SamplerManager : GpuResourceManager<SamplerData>
 {
-    public static Entity LinearClamp(GraphicsContext ctx) =>
-        Create(ctx, AddressMode.ClampToEdge, AddressMode.ClampToEdge, AddressMode.ClampToEdge,
+    public SamplerManager(GraphicsContext ctx)
+        : base(ctx, ctx._samplers)
+    {
+    }
+
+    public Entity LinearClamp() =>
+        Create(AddressMode.ClampToEdge, AddressMode.ClampToEdge, AddressMode.ClampToEdge,
             FilterMode.Linear, FilterMode.Linear, MipmapFilterMode.Linear);
 
-    public static Entity Create(
-        GraphicsContext ctx,
+    public Entity Create(
         AddressMode addressModeU,
         AddressMode addressModeV,
         AddressMode addressModeW,
@@ -33,26 +36,25 @@ public static unsafe class Samplers
             MaxAnisotropy = 1,
             Label = null
         };
-        return Create(ctx, descriptor);
+        return Create(descriptor);
     }
 
-    public static Entity Create(GraphicsContext ctx, SamplerDescriptor descriptor)
+    public Entity Create(SamplerDescriptor descriptor)
     {
-        var native = ctx.Device.CreateSampler(ctx.NativeDevice, &descriptor);
-        return ctx._samplers.Create(HList.From(new SamplerData
+        var native = Ctx.Device.CreateSampler(Ctx.NativeDevice, &descriptor);
+        return CreateResource(new SamplerData
         {
             NativePtr = native,
             RefCount = 1
-        }));
+        });
     }
 
-    public static void Release(GraphicsContext ctx, Entity sampler)
+    protected override ref int GetRefCountRef(ref SamplerData data) => ref data.RefCount;
+
+    protected override nint GetNativePtr(ref SamplerData data) => data.NativePtr;
+
+    protected override void ReleaseNative(nint nativePtr)
     {
-        ref var s = ref sampler.Get<SamplerData>();
-        if (Interlocked.Decrement(ref s.RefCount) == 0)
-        {
-            ctx.Device.ReleaseSampler(s.NativePtr);
-            sampler.Destroy();
-        }
+        Ctx.Device.ReleaseSampler(nativePtr);
     }
 }

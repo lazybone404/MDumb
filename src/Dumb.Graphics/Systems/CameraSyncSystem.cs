@@ -24,7 +24,7 @@ public sealed class CameraSyncSystem : ExtractSystemBase
         var id = cameraEntity.Id.Value;
         if (_buffers.TryGetValue(id, out var buffer))
             return buffer;
-        return _buffers[id] = Buffers.Create(_ctx, (ulong)Unsafe.SizeOf<CameraUniforms>(),
+        return _buffers[id] = _ctx.Buffers.Create((ulong)Unsafe.SizeOf<CameraUniforms>(),
             BufferUsage.Uniform | BufferUsage.CopyDst);
     }
 
@@ -61,12 +61,12 @@ public sealed class CameraSyncSystem : ExtractSystemBase
 
             if (!_buffers.TryGetValue(id, out var buffer))
             {
-                buffer = Buffers.Create(_ctx, (ulong)Unsafe.SizeOf<CameraUniforms>(),
+                buffer = _ctx.Buffers.Create((ulong)Unsafe.SizeOf<CameraUniforms>(),
                     BufferUsage.Uniform | BufferUsage.CopyDst);
                 _buffers[id] = buffer;
             }
 
-            Buffers.Write(_ctx, buffer, CameraUniforms.From(camera));
+            _ctx.Buffers.Write(buffer, CameraUniforms.From(camera));
         });
 
         _removedIds.Clear();
@@ -74,7 +74,7 @@ public sealed class CameraSyncSystem : ExtractSystemBase
         {
             if (!_seenIds.Contains(id))
             {
-                Buffers.Release(_ctx, buffer);
+                _ctx.Buffers.Release(buffer);
                 _removedIds.Add(id);
             }
         }

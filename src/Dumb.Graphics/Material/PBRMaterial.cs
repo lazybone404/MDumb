@@ -49,52 +49,44 @@ public struct PBRMaterial : IMaterial
 
     public static string Name => "PBR";
 
-    public static Engine.Mesh.MeshDescriptor VertexDescriptor => new(
-        [new Engine.Mesh.VertexStreamDescriptor([
-            new Engine.Mesh.VertexElement(Engine.Mesh.MeshAttribute.Position, location: 0),
-            new Engine.Mesh.VertexElement(Engine.Mesh.MeshAttribute.Normal, location: 1),
-            new Engine.Mesh.VertexElement(Engine.Mesh.MeshAttribute.UV0, location: 2),
-            new Engine.Mesh.VertexElement(Engine.Mesh.MeshAttribute.Tangent, location: 3),
-            new Engine.Mesh.VertexElement(Engine.Mesh.MeshAttribute.Color, location: 4)
-        ])],
-        IndexFormat.Uint32);
-
-    private static readonly BindingLayout[][] s_bindGroupLayouts =
-    [
-        // Group 0: Frame (camera + model — provided by renderer)
-        [
-            BindingLayout.UniformBuffer(0, ShaderStage.Vertex, 336),
-            BindingLayout.UniformBuffer(2, ShaderStage.Vertex, 64, hasDynamicOffset: true)
-        ],
-        // Group 1: Material
-        [
-            BindingLayout.UniformBuffer(0, ShaderStage.Fragment, (ulong)Unsafe.SizeOf<PBRMaterialParameters>()),
-            BindingLayout.Texture(1, ShaderStage.Fragment),
-            BindingLayout.Texture(2, ShaderStage.Fragment),
-            BindingLayout.Texture(3, ShaderStage.Fragment),
-            BindingLayout.Texture(4, ShaderStage.Fragment),
-            BindingLayout.Sampler(5, ShaderStage.Fragment)
-        ]
-    ];
-
-    public static BindingLayout[][] BindGroupLayouts => s_bindGroupLayouts;
-
-    public static BlendState? Blend => null;
-
-    public static TextureFormat[] ColorFormats =>
-    [
-        TextureFormat.Rgba8Unorm,
-        TextureFormat.Rgba16float,
-        TextureFormat.Rgba8Unorm
-    ];
-
-    public static DepthStencilState? DepthStencil => new()
+    public static MaterialConfig Config => new()
     {
-        Format = TextureFormat.Depth32float,
-        DepthWriteEnabled = true,
-        DepthCompare = CompareFunction.Less,
-        StencilFront = new StencilFaceState { Compare = CompareFunction.Always, FailOp = StencilOperation.Keep, DepthFailOp = StencilOperation.Keep, PassOp = StencilOperation.Keep },
-        StencilBack = new StencilFaceState { Compare = CompareFunction.Always, FailOp = StencilOperation.Keep, DepthFailOp = StencilOperation.Keep, PassOp = StencilOperation.Keep }
+        VertexDescriptor = new Engine.Mesh.MeshDescriptor(
+            [new Engine.Mesh.VertexStreamDescriptor([
+                new Engine.Mesh.VertexElement(Engine.Mesh.MeshAttribute.Position, location: 0),
+                new Engine.Mesh.VertexElement(Engine.Mesh.MeshAttribute.Normal, location: 1),
+                new Engine.Mesh.VertexElement(Engine.Mesh.MeshAttribute.UV0, location: 2),
+                new Engine.Mesh.VertexElement(Engine.Mesh.MeshAttribute.Tangent, location: 3),
+                new Engine.Mesh.VertexElement(Engine.Mesh.MeshAttribute.Color, location: 4)
+            ])],
+            IndexFormat.Uint32),
+        BindGroupLayouts =
+        [
+            // Group 0: Frame (camera + model)
+            [
+                BindingLayout.UniformBuffer(0, ShaderStage.Vertex, 336),
+                BindingLayout.UniformBuffer(2, ShaderStage.Vertex, 64, hasDynamicOffset: true)
+            ],
+            // Group 1: Material
+            [
+                BindingLayout.UniformBuffer(0, ShaderStage.Fragment, (ulong)Unsafe.SizeOf<PBRMaterialParameters>()),
+                BindingLayout.Texture(1, ShaderStage.Fragment),
+                BindingLayout.Texture(2, ShaderStage.Fragment),
+                BindingLayout.Texture(3, ShaderStage.Fragment),
+                BindingLayout.Texture(4, ShaderStage.Fragment),
+                BindingLayout.Sampler(5, ShaderStage.Fragment)
+            ]
+        ],
+        ColorFormats = [TextureFormat.Rgba8Unorm, TextureFormat.Rgba16float, TextureFormat.Rgba8Unorm],
+        Blend = null,
+        DepthStencil = new DepthStencilState
+        {
+            Format = TextureFormat.Depth32float,
+            DepthWriteEnabled = true,
+            DepthCompare = CompareFunction.Less,
+            StencilFront = new StencilFaceState { Compare = CompareFunction.Always, FailOp = StencilOperation.Keep, DepthFailOp = StencilOperation.Keep, PassOp = StencilOperation.Keep },
+            StencilBack = new StencilFaceState { Compare = CompareFunction.Always, FailOp = StencilOperation.Keep, DepthFailOp = StencilOperation.Keep, PassOp = StencilOperation.Keep }
+        }
     };
 
     public Entity GetShader(GraphicsContext ctx)
@@ -102,26 +94,26 @@ public struct PBRMaterial : IMaterial
         if (_cachedShader is { Host: not null } s)
             return s;
 
-        _cachedShader = Shaders.Wgsl(ctx, GBufferVertexShader + GBufferFragmentShader);
+        _cachedShader = ctx.Shaders.Wgsl(GBufferVertexShader + GBufferFragmentShader);
         return _cachedShader!;
     }
 
     public Entity?[] CreateBindGroups(GraphicsContext ctx, Entity pipelineLayout)
     {
-        var materialUniform = Buffers.Uniform(ctx, Parameters);
+        var materialUniform = ctx.Buffers.Uniform(Parameters);
 
         var baseColorTex = BaseColorTexture ?? ctx._textures.First();
         var normalTex = NormalTexture ?? ctx._textures.First();
         var mroTex = MROTexture ?? ctx._textures.First();
         var emissiveTex = EmissiveTexture ?? ctx._textures.First();
-        var sampler = Sampler ?? Samplers.LinearClamp(ctx);
+        var sampler = Sampler ?? ctx.Samplers.LinearClamp();
 
         // Group 1: Material bindings
         ref var plData = ref pipelineLayout.Get<PipelineLayoutData>();
         var bgl1 = plData.BindGroupLayouts?[1]
             ?? throw new InvalidOperationException("Material requires bind group layout at index 1.");
 
-        var group1 = Pipelines.BindGroup(ctx, bgl1,
+        var group1 = ctx.Pipelines.BindGroup(bgl1,
         [
             Binding.Uniform<PBRMaterialParameters>(0, materialUniform),
             Binding.Texture(1, baseColorTex),

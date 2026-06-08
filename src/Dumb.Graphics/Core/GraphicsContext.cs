@@ -1,14 +1,10 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using System.Text;
 using Sia;
 using Silk.NET.WebGPU;
 using Dumb.Graphics.Interfaces;
 #if BROWSER
 using Dumb.Emscripten;
-using Dumb.Graphics.Browser;
-#else
-using Dumb.Graphics.Native;
 #endif
 
 namespace Dumb.Graphics;
@@ -18,6 +14,18 @@ public class GraphicsContext : IDisposable
     public readonly World _world = new();
 
     public World World => _world;
+
+    // Resource managers (instance classes, replacing former static classes)
+    public BufferManager Buffers { get; }
+    public TextureManager Textures { get; }
+    public ShaderManager Shaders { get; }
+    public SamplerManager Samplers { get; }
+    public PipelineManager Pipelines { get; }
+    public MeshManager Meshes { get; }
+    public MaterialManager Materials { get; }
+
+    // Surface lifecycle manager
+    public SurfaceManager Surfaces { get; }
 
     public void AttachToParentWorld(World parentWorld)
     {
@@ -86,15 +94,22 @@ public class GraphicsContext : IDisposable
 
 #if BROWSER
         _wgpu = new WGPUBrowser();
-        Device = new BrowserDeviceBackend(_wgpu);
-        Command = new BrowserCommandBackend(_wgpu);
-        SwapChain = new BrowserSwapChainBackend(_wgpu);
 #else
         _wgpu = global::Silk.NET.WebGPU.WebGPU.GetApi();
-        Device = new NativeDeviceBackend(_wgpu);
-        Command = new NativeCommandBackend(_wgpu);
-        SwapChain = new NativeSwapChainBackend(_wgpu);
 #endif
+        Device = new DeviceBackend(_wgpu);
+        Command = new CommandBackend(_wgpu);
+        SwapChain = new SwapChainBackend(_wgpu);
+
+        // Initialize resource managers (after Device/Command/SwapChain are set)
+        Buffers = new BufferManager(this);
+        Textures = new TextureManager(this);
+        Shaders = new ShaderManager(this);
+        Samplers = new SamplerManager(this);
+        Pipelines = new PipelineManager(this);
+        Meshes = new MeshManager(this);
+        Materials = new MaterialManager(this);
+        Surfaces = new SurfaceManager(this, Device, SwapChain);
     }
 
 #if BROWSER
@@ -109,9 +124,7 @@ public class GraphicsContext : IDisposable
     public nint NativeQueueHandle => NativeQueue;
 
     public GraphicsSurface CreateSurfaceFromNative(nint handle)
-    {
-        return new GraphicsSurface { Handle = handle, Context = this };
-    }
+        => Surfaces.CreateFromNative(handle);
 
     public static unsafe void SetCompatibleSurface(
         ref RequestAdapterOptions options, in GraphicsSurface surface)
@@ -122,7 +135,7 @@ public class GraphicsContext : IDisposable
     public TextureFormat GetSurfacePreferredFormat(GraphicsSurface surface)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        return SwapChain.GetPreferredFormat(surface.Handle, NativeAdapter);
+        return Surfaces.GetPreferredFormat(surface);
     }
 
     public void ConfigureSurface(in GraphicsSurface surface,
@@ -130,38 +143,31 @@ public class GraphicsContext : IDisposable
         PresentMode presentMode = PresentMode.Fifo)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        SwapChain.Configure(surface, NativeDevice, usage, presentMode);
+        Surfaces.Configure(surface, usage, presentMode);
     }
 
     public SurfaceFrame BeginFrame(in GraphicsSurface surface)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        var viewHandle = SwapChain.GetCurrentTextureView(surface);
-        Entity view = null!;
-        if (viewHandle != 0)
-            view = Textures.WrapNativeTextureView(this, viewHandle);
-        return new SurfaceFrame(this, surface.Handle, view);
+        return Surfaces.BeginFrame(surface);
     }
 
     public void PresentSurface(nint surface)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        SwapChain.Present(surface);
+        Surfaces.Present(surface);
     }
 
     public void UnconfigureSurface(GraphicsSurface surface)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        SwapChain.Unconfigure(surface.Handle);
+        Surfaces.Unconfigure(surface.Handle);
     }
 
     public unsafe void DestroySurface(ref GraphicsSurface surface)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        if (!surface.IsValid) return;
-        SwapChain.Unconfigure(surface.Handle);
-        NativeApi.SurfaceRelease((Surface*)surface.Handle);
-        surface = default;
+        Surfaces.Destroy(ref surface);
     }
 
     public Task InitializeAsync(RequestAdapterOptions options, DeviceDescriptor descriptor)
@@ -226,23 +232,23 @@ public class GraphicsContext : IDisposable
             foreach (var vb in m.VertexBuffers)
             {
                 if (vb.Host != null)
-                    Buffers.Release(this, vb);
+                    Buffers.Release(vb);
             }
             if (m.IndexBuffer.Host != null)
-                Buffers.Release(this, m.IndexBuffer);
+                Buffers.Release(m.IndexBuffer);
         });
         _materials.ForSlice<MaterialResourceData>((ref MaterialResourceData m) =>
         {
             if (m.Pipeline.Host != null)
-                Pipelines.ReleaseRenderPipeline(this, m.Pipeline);
+                Pipelines.ReleaseRenderPipeline(m.Pipeline);
             if (m.PipelineLayout.Host != null)
-                Pipelines.ReleasePipelineLayout(this, m.PipelineLayout);
+                Pipelines.ReleasePipelineLayout(m.PipelineLayout);
             if (m.BindGroups != null)
             {
                 foreach (var bg in m.BindGroups)
                 {
                     if (bg?.Host != null)
-                        Pipelines.ReleaseBindGroup(this, bg);
+                        Pipelines.ReleaseBindGroup(bg);
                 }
             }
         });

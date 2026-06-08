@@ -49,17 +49,17 @@ public sealed class GBuffer : IDisposable
 
     private void CreateTextures()
     {
-        _rt0 = Textures.RenderTarget(_ctx, Width, Height, TextureFormat.Rgba8Unorm,
+        _rt0 = _ctx.Textures.RenderTarget(Width, Height, TextureFormat.Rgba8Unorm,
             TextureUsage.RenderAttachment | TextureUsage.TextureBinding);
-        _rt1 = Textures.RenderTarget(_ctx, Width, Height, TextureFormat.Rgba16float,
+        _rt1 = _ctx.Textures.RenderTarget(Width, Height, TextureFormat.Rgba16float,
             TextureUsage.RenderAttachment | TextureUsage.TextureBinding);
-        _rt2 = Textures.RenderTarget(_ctx, Width, Height, TextureFormat.Rgba8Unorm,
+        _rt2 = _ctx.Textures.RenderTarget(Width, Height, TextureFormat.Rgba8Unorm,
             TextureUsage.RenderAttachment | TextureUsage.TextureBinding);
 
-        _depthTexture = Textures.Create2D(_ctx, Width, Height,
+        _depthTexture = _ctx.Textures.Create2D(Width, Height,
             TextureFormat.Depth32float,
             TextureUsage.RenderAttachment | TextureUsage.TextureBinding);
-        _depthView = Textures.CreateDepthView(_ctx, _depthTexture);
+        _depthView = _ctx.Textures.CreateDepthView(_depthTexture);
     }
 
     public void Resize(uint width, uint height)
@@ -75,14 +75,14 @@ public sealed class GBuffer : IDisposable
 
     private void ReleaseTextures()
     {
-        if (_depthView.Host != null) Textures.ReleaseView(_ctx, _depthView);
-        if (_rt0.View.Host != null) Textures.ReleaseView(_ctx, _rt0.View);
-        if (_rt1.View.Host != null) Textures.ReleaseView(_ctx, _rt1.View);
-        if (_rt2.View.Host != null) Textures.ReleaseView(_ctx, _rt2.View);
-        if (_rt0.Texture.Host != null) Textures.Release(_ctx, _rt0.Texture);
-        if (_rt1.Texture.Host != null) Textures.Release(_ctx, _rt1.Texture);
-        if (_rt2.Texture.Host != null) Textures.Release(_ctx, _rt2.Texture);
-        if (_depthTexture.Host != null) Textures.Release(_ctx, _depthTexture);
+        if (_depthView.Host != null) _ctx.Textures.ReleaseView(_depthView);
+        if (_rt0.View.Host != null) _ctx.Textures.ReleaseView(_rt0.View);
+        if (_rt1.View.Host != null) _ctx.Textures.ReleaseView(_rt1.View);
+        if (_rt2.View.Host != null) _ctx.Textures.ReleaseView(_rt2.View);
+        if (_rt0.Texture.Host != null) _ctx.Textures.Release(_rt0.Texture);
+        if (_rt1.Texture.Host != null) _ctx.Textures.Release(_rt1.Texture);
+        if (_rt2.Texture.Host != null) _ctx.Textures.Release(_rt2.Texture);
+        if (_depthTexture.Host != null) _ctx.Textures.Release(_depthTexture);
     }
 
     public void Dispose()

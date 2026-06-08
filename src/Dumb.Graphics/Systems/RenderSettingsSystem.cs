@@ -73,13 +73,13 @@ public sealed class RenderSettingsSystem : ExtractSystemBase
             }
         }
 
-        Buffers.Write(_ctx, _settingsBuffer, result);
+        _ctx.Buffers.Write(_settingsBuffer, result);
     }
 
     private void EnsureBuffer()
     {
         if (_bufferCreated) return;
-        _settingsBuffer = Buffers.Create(_ctx,
+        _settingsBuffer = _ctx.Buffers.Create(
             (ulong)Unsafe.SizeOf<SettingsUniforms>(),
             BufferUsage.Uniform | BufferUsage.CopyDst);
         _bufferCreated = true;

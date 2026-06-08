@@ -69,15 +69,15 @@ public sealed class TransformSyncSystem : ExtractSystemBase
         if (_modelBuffer?.Host == null)
         {
             _capacity = Math.Max(neededSlots, InitialSlots);
-            _modelBuffer = Buffers.Create(_ctx,
+            _modelBuffer = _ctx.Buffers.Create(
                 (ulong)(_capacity * SlotByteSize),
                 BufferUsage.Uniform | BufferUsage.CopyDst);
         }
         else if (neededSlots > _capacity)
         {
-            Buffers.Release(_ctx, _modelBuffer!);
+            _ctx.Buffers.Release(_modelBuffer!);
             _capacity = neededSlots;
-            _modelBuffer = Buffers.Create(_ctx,
+            _modelBuffer = _ctx.Buffers.Create(
                 (ulong)(_capacity * SlotByteSize),
                 BufferUsage.Uniform | BufferUsage.CopyDst);
         }
@@ -97,7 +97,7 @@ public sealed class TransformSyncSystem : ExtractSystemBase
                 var mat = gt.Value.ToMatrix4x4();
                 MemoryMarshal.Write(_modelData.AsSpan(slot * SlotByteSize), mat);
             });
-            Buffers.Write(_ctx, _modelBuffer!, 0, _modelData.AsSpan(0, byteSize));
+            _ctx.Buffers.Write(_modelBuffer!, 0, _modelData.AsSpan(0, byteSize));
         }
 
         // Clean up removed entities

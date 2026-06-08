@@ -15,7 +15,7 @@ public static class DrawCommand
                 pass.SetBindGroup(i, bg);
         }
 
-        Mesh.Draw(pass, item.Mesh, item.SubMeshIndex);
+        ctx.Meshes.Draw(pass, item.Mesh, item.SubMeshIndex);
     }
 
     public static void DrawFullScreen(GraphicsContext ctx, ref RenderPass pass, in PhaseItem item)
